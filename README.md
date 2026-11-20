@@ -10,6 +10,7 @@ It connects senior citizens using basic keypad phones (no smartphone, no app, no
 - **Jyvhan Earl D. Ponce** - Quality Assurance (Test Plan, Latency/Handoff/Status/Battery Evaluation)
 
 ## Documents & Interactive UI
+- **Team Distribution & Git Workflow:** [`docs/TEAM_DISTRIBUTION.md`](docs/TEAM_DISTRIBUTION.md)
 - **Full Design Spec:** [`docs/superpowers/specs/2026-11-20-lola-gateway-design.md`](docs/superpowers/specs/2026-11-20-lola-gateway-design.md)
 - **Interactive UI Wireframes (6 Screens, Light & Dark):** [`docs/ui/lola-gateway-wireframes.html`](docs/ui/lola-gateway-wireframes.html)
 - **Editable Architecture Diagram (SVG):** [`docs/diagrams/lola-gateway-backend-workflow.svg`](docs/diagrams/lola-gateway-backend-workflow.svg)
