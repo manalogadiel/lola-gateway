@@ -233,9 +233,9 @@ Interactive 6-screen wireframe reference: [`docs/ui/lola-gateway-wireframes.html
 - **Dual-SIM Safety (Builder Call):** Request `READ_PHONE_STATE` and use `SubscriptionManager` + `SmsManager.createForSubscriptionId(subId)` so Dual-SIM test phones let the host pick SIM 1 or SIM 2 explicitly without triggering Android's interactive SIM prompt.
 - **QA Invalid-Number & Browser Latency Logging (Builder Call):** Hidden 5-tap Diagnostics on Android includes a one-off QA test send (allowing an invalid destination override without corrupting `seniorPhoneE164`) plus Room CSV export; React PWA supports an optional hidden `?qa=1` query flag to export browser send/render timestamps for R1/R2/R4 verification.
 
-### 6.9 Open Decisions Pending User Confirmation (Before Implementation Plan)
-1. **Direct-Message (DM) threads vs. Single Family Group Chat:** Confirm whether the Home/People threads and Compose button open one shared SMS-linked Family Group Chat (matching the CS 312 proposal scope), or whether relative-to-relative private internet DMs should also be built.
-2. **Android App Role Scope:** Confirm whether the Kotlin Android app runs strictly on the Gateway phone (where the host can also chat in the Family Chat), or also needs a non-gateway `Family Member` mode for relatives' Android phones.
+### 6.9 Scope Defaults Locked for Implementation Plan (Override Anytime)
+1. **Single Shared Family Group Chat (Default Locked):** Matches the CS 312 proposal scope (`one family chat linked to one Gateway Android phone and one keypad phone`). Home and People show Lola and family members; tapping Lola, the family group, or Compose opens that shared SMS-linked chat cleanly without extra DM subcollections.
+2. **Android App = Gateway Phone + Host Chat (Default Locked):** The plain Kotlin Android app runs on the household Gateway phone (with full messaging UI so the host can read and send directly, dispatching locally without an FCM self-push), while relatives use the standalone React PWA in any browser.
 
 ---
 

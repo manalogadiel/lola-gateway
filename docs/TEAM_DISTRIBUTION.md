@@ -2,6 +2,7 @@
 
 **Project:** Lola Gateway (CS 312 Mobile Computing, Group 1, CS3103)
 **Target Demo Window:** November 30 to December 4, 2026
+**Step-by-Step Task Plan:** [`docs/superpowers/plans/2026-11-20-lola-gateway.md`](superpowers/plans/2026-11-20-lola-gateway.md)
 
 Each member owns separate directories and branches so all three of us can work in parallel without merge conflicts.
 
