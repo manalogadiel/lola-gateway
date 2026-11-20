@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only" id="meta-color-scheme">
+<title>Lola Gateway: UI Wireframes (6 Screens)</title>
+<style>
+  :root,
+  html[data-theme="light"] {
+    color-scheme: light only;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+    /* Exact hexes matched to generated Lola assets + uploaded references */
+    --page-bg: #F2EEE7;
+    --canvas: #F8F5EF;
+    --surface: #FFFFFF;
+    --surface-soft: #EEEAE1;
+    --surface-subtle: #F4F1EA;
+    --chrome-glass: rgba(248, 245, 239, 0.86);
+    --chat-chrome-glass: rgba(251, 248, 246, 0.84);
+    --dock-glass: rgba(255, 255, 255, 0.82);
+
+    --ink: #1A1826;
+    --ink-secondary: #5B566E;
+    --ink-muted: #7C7790;
+
+    --periwinkle: #5E69DC;
+    --periwinkle-deep: #4A55C8;
+    --periwinkle-soft: #E9EAFC;
+    --marigold: #F4BD33;
+    --marigold-soft: #FDE9B6;
+    --marigold-bubble: #FFF3D1;
+    --marigold-ink: #7F4F00;
+    --coral: #E86874;
+    --coral-soft: #FDECEF;
+    --coral-ink: #A32634;
+    --mint: #1D9468;
+    --mint-soft: #E1F5EC;
+    --mint-ink: #116647;
+
+    --chat-ambient: radial-gradient(circle at 10% 18%, rgba(242, 125, 132, 0.13), transparent 52%),
+                    radial-gradient(circle at 90% 84%, rgba(94, 105, 220, 0.13), transparent 56%),
+                    #FBF8F6;
+
+    --shadow-phone: 0 24px 60px rgba(26, 24, 38, 0.11), 0 2px 10px rgba(26, 24, 38, 0.05);
+    --shadow-card: 0 1px 2px rgba(26, 24, 38, 0.04), 0 6px 18px rgba(26, 24, 38, 0.035);
+    --shadow-dock: 0 10px 28px rgba(26, 24, 38, 0.10), 0 1px 3px rgba(26, 24, 38, 0.05);
+    --bezel: #22202E;
+    --divider: rgba(26, 24, 38, 0.06);
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark only;
+    --page-bg: #08070D;
+    --canvas: #0E0D16;
+    --surface: #171524;
+    --surface-soft: #221F34;
+    --surface-subtle: #1D1A2C;
+    --chrome-glass: rgba(14, 13, 22, 0.86);
+    --chat-chrome-glass: rgba(17, 15, 27, 0.86);
+    --dock-glass: rgba(25, 23, 39, 0.84);
+
+    --ink: #F5F3FA;
+    --ink-secondary: #ABA5C2;
+    --ink-muted: #847E9E;
+
+    --periwinkle: #7E87F5;
+    --periwinkle-deep: #6770E8;
+    --periwinkle-soft: rgba(126, 135, 245, 0.18);
+    --marigold: #F5C84B;
+    --marigold-soft: #FDE9B6;
+    --marigold-bubble: rgba(245, 200, 75, 0.16);
+    --marigold-ink: #FAD975;
+    --coral: #F27986;
+    --coral-soft: rgba(242, 121, 134, 0.16);
+    --coral-ink: #FDA4AE;
+    --mint: #34D399;
+    --mint-soft: rgba(52, 211, 153, 0.16);
+    --mint-ink: #6EE7B7;
+
+    --chat-ambient: radial-gradient(circle at 10% 18%, rgba(242, 121, 134, 0.09), transparent 52%),
+                    radial-gradient(circle at 90% 84%, rgba(126, 135, 245, 0.12), transparent 56%),
+                    #110F1B;
+
+    --shadow-phone: 0 28px 68px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(255, 255, 255, 0.07);
+    --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.24);
+    --shadow-dock: 0 12px 32px rgba(0, 0, 0, 0.45);
+    --bezel: #040408;
+    --divider: rgba(255, 255, 255, 0.07);
+  }
+
+  html.theme-switching *,
+  html.theme-switching *::before,
+  html.theme-switching *::after {
+    transition: none !important;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--page-bg);
+    color: var(--ink);
+  }
+
+  body {
+    padding: 0 24px 72px;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, p, span {
+    color: inherit;
+  }
+
+  button, input {
+    font-family: inherit;
+    color: var(--ink);
+  }
+
+  button {
+    border: 0;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 150ms var(--ease-out), background-color 150ms var(--ease-out), opacity 150ms var(--ease-out);
+  }
+
+  button:not(:disabled):active {
+    transform: scale(0.96);
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  [data-choice]:focus-visible {
+    outline: 2px solid var(--periwinkle);
+    outline-offset: 3px;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Page Top Bar */
+  .topbar {
+    position: sticky;
+    top: 12px;
+    z-index: 50;
+    max-width: 1380px;
+    margin: 16px auto 28px;
+    padding: 12px 18px;
+    border-radius: 22px;
+    background: var(--dock-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .topbar-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
+    object-fit: cover;
+    display: block;
+    background: #FDE9B6;
+  }
+
+  .topbar-title {
+    margin: 0;
+    font-size: 1.04rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+
+  .topbar-sub {
+    margin: 2px 0 0;
+    font-size: 0.82rem;
+    color: var(--ink-secondary);
+  }
+
+  .topbar-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .seg-group {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 14px;
+    background: var(--surface-soft);
+    gap: 2px;
+  }
+
+  .seg-btn {
+    padding: 7px 13px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    white-space: nowrap;
+  }
+
+  .seg-btn.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 4px rgba(26, 24, 38, 0.08);
+  }
+
+  /* Gallery Grid */
+  .gallery {
+    max-width: 1380px;
+    margin: 0 auto 44px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 32px 26px;
+    align-items: start;
+  }
+
+  .screen-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .screen-meta {
+    width: 334px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 6px;
+  }
+
+  .screen-name {
+    font-size: 0.94rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+
+  .screen-app {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ink-secondary);
+  }
+
+  /* Apple Phone Frame */
+  .phone {
+    width: 334px;
+    height: 700px;
+    border-radius: 48px;
+    padding: 10px;
+    background: var(--bezel);
+    box-shadow: var(--shadow-phone);
+    position: relative;
+  }
+
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 39px;
+    background: var(--canvas);
+    color: var(--ink);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Unified Apple Top Chrome (Status bar + Nav merged seamlessly, zero step/seam) */
+  .phone-top-chrome {
+    background: var(--chrome-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 8;
+  }
+
+  .phone-top-chrome.chat-chrome {
+    background: var(--chat-chrome-glass);
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .phone-top-chrome.periwinkle-chrome {
+    background: #5E69DC;
+    color: #FFFFFF;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .phone-top-chrome.lavender-chrome {
+    background: #E9EAFC;
+    color: #1A1826;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .status-bar {
+    height: 44px;
+    padding: 12px 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: inherit;
+    position: relative;
+  }
+
+  .dynamic-island {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 84px;
+    height: 23px;
+    border-radius: 999px;
+    background: #0A0A0E;
+  }
+
+  .sb-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: inherit;
+  }
+
+  .nav-bar {
+    padding: 6px 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .app-h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: var(--ink);
+  }
+
+  .home-indicator {
+    width: 114px;
+    height: 4px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.22;
+    margin: 6px auto 8px;
+    flex-shrink: 0;
+  }
+
+  /* Status Dot (Clean dot + plain text, zero pill box, zero glow) */
+  .status-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    white-space: nowrap;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-mint { background: var(--mint); }
+  .dot-amber { background: var(--marigold); }
+  .dot-peri { background: var(--periwinkle); }
+  .dot-coral { background: var(--coral); }
+
+  /* Primary Filled Pill CTA */
+  .pill-cta {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    background: var(--periwinkle);
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+
+  .pill-cta-white {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-card);
+  }
+
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 16px 88px;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .scroll-area::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ===================================================
+     SCREEN 1: WELCOME & GOOGLE SIGN-IN (Seamless #5E69DC Canopy)
+     =================================================== */
+  .onboard-canopy {
+    background: #5E69DC;
+    color: #FFFFFF;
+    padding: 2px 20px 14px;
+    border-bottom-left-radius: 46% 30px;
+    border-bottom-right-radius: 46% 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .onboard-wordmark {
+    margin: 4px 0 0;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+    color: #FFFFFF;
+  }
+
+  .onboard-sub {
+    margin: 3px 0 6px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.90);
+  }
+
+  .lola-hero-img {
+    width: 176px;
+    height: 152px;
+    object-fit: cover;
+    object-position: center 45%;
+    display: block;
+    margin-bottom: -8px;
+  }
+
+  .onboard-body {
+    flex: 1;
+    padding: 18px 20px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .onboard-title {
+    margin: 0 0 4px;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    text-align: center;
+    color: var(--ink);
+  }
+
+  .onboard-desc {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--ink-secondary);
+    text-align: center;
+    line-height: 1.45;
+  }
+
+  .role-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 4px;
+    border-radius: 15px;
+    background: var(--surface-soft);
+    margin-bottom: 12px;
+  }
+
+  .role-btn {
+    min-height: 36px;
+    border-radius: 11px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-secondary);
+  }
+
+  .role-btn.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 4px rgba(26, 24, 38, 0.08);
+  }
+
+  .soft-input {
+    width: 100%;
+    height: 46px;
+    padding: 0 15px;
+    border-radius: 14px;
+    border: 0;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    font-size: 15px;
+    color: var(--ink);
+  }
+
+  .soft-input::placeholder {
+    color: var(--ink-muted);
+  }
+
+  .quiet-link {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    margin-top: 8px;
+  }
+
+  /* ===================================================
+     SCREEN 2: MESSAGING HOME (People + Group Chats, NO Queue Tab!)
+     =================================================== */
+  .search-wrap {
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 14px;
+    background: var(--surface-soft);
+    color: var(--ink-muted);
+  }
+
+  .search-input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+  }
+
+  .search-input::placeholder {
+    color: var(--ink-muted);
+  }
+
+  /* Subtle Compact Bridge Status Strip (Only for Gateway phone, warm & unobtrusive) */
+  .bridge-mini {
+    padding: 11px 14px;
+    border-radius: 18px;
+    background: var(--mint-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+
+  .bridge-mini[data-state="4g"] {
+    background: var(--marigold-bubble);
+  }
+
+  .bridge-mini[data-state="paused"] {
+    background: var(--coral-soft);
+  }
+
+  .bridge-mini-left {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  .bridge-mini-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  .bridge-mini-sub {
+    font-size: 11.5px;
+    color: var(--ink-secondary);
+    line-height: 1.25;
+  }
+
+  .bridge-mini-action {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+    opacity: 0.78;
+    white-space: nowrap;
+  }
+
+  /* Horizontal People Row (Apple Messages Pinned / Active Family) */
+  .section-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 2px 10px;
+  }
+
+  .section-label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-secondary);
+    letter-spacing: -0.01em;
+  }
+
+  .people-strip {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding: 2px 2px 14px;
+    scrollbar-width: none;
+  }
+
+  .people-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .person-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 56px;
+    flex-shrink: 0;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    width: 52px;
+    height: 52px;
+  }
+
+  .avatar-img {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    background: #FDE9B6;
+  }
+
+  .avatar-init {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .presence-dot {
+    position: absolute;
+    right: 1px;
+    bottom: 1px;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--mint);
+    box-shadow: 0 0 0 2.5px var(--canvas);
+  }
+
+  .person-name {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 58px;
+  }
+
+  /* Conversation List (Group Chats & Direct Threads) */
+  .chat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .thread-row {
+    width: 100%;
+    text-align: left;
+    padding: 12px 13px;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .thread-row.active-thread {
+    background: var(--periwinkle-soft);
+  }
+
+  .group-avatar-stack {
+    width: 48px;
+    height: 48px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .group-av-main {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #FDE9B6;
+  }
+
+  .group-av-sub {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--periwinkle);
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    box-shadow: 0 0 0 2.5px var(--surface);
+  }
+
+  .thread-mid {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .thread-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
+  .thread-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .thread-time {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+
+  .thread-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .thread-preview {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .unread-dot {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--periwinkle);
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .sms-tag-inline {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--marigold-ink);
+  }
+
+  /* Icon-Only Bottom Dock (3 clean tabs: Chats, People, Settings + Right Compose Button) */
+  .dock-wrap {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 12;
+  }
+
+  .icon-dock {
+    flex: 1;
+    height: 54px;
+    padding: 6px;
+    border-radius: 27px;
+    background: var(--dock-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: var(--shadow-dock);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-items: center;
+  }
+
+  .dock-btn {
+    height: 42px;
+    border-radius: 21px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-muted);
+  }
+
+  .dock-btn.active {
+    background: var(--periwinkle-soft);
+    color: var(--periwinkle);
+  }
+
+  .dock-primary-right {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--periwinkle);
+    color: #FFFFFF;
+    box-shadow: var(--shadow-dock);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  /* ===================================================
+     SCREEN 3: PEOPLE TAB (Lola Senior Card + Family Roster)
+     =================================================== */
+  .invite-text-btn {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--periwinkle);
+    padding: 4px 2px;
+  }
+
+  .senior-card {
+    padding: 15px;
+    border-radius: 22px;
+    background: var(--marigold-bubble);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .senior-card-avatar {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #FDE9B6;
+  }
+
+  .senior-card-mid {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .senior-card-name {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+
+  .senior-card-num {
+    font-size: 12px;
+    color: var(--ink-secondary);
+    margin: 2px 0 4px;
+  }
+
+  .msg-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--periwinkle);
+    box-shadow: var(--shadow-card);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .member-row {
+    padding: 11px 0;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .member-row + .member-row {
+    border-top: 1px solid var(--divider);
+  }
+
+  .member-av {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 14.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .member-dot {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+
+  .member-mid {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .member-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+
+  .member-role {
+    font-size: 11.5px;
+    color: var(--ink-secondary);
+    margin-top: 1px;
+  }
+
+  .invite-card {
+    padding: 14px 16px;
+    border-radius: 20px;
+    background: var(--periwinkle-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .invite-code-val {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--periwinkle);
+  }
+
+  .copy-pill-sm {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--periwinkle);
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  /* ===================================================
+     SCREEN 4: FAMILY GROUP CHAT (Seamless Top Bar + Clean Composer)
+     =================================================== */
+  .chat-screen {
+    background: var(--chat-ambient);
+  }
+
+  .chat-nav {
+    padding: 4px 16px 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .chat-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .bare-back {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+  }
+
+  .chat-title-block h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+
+  .chat-avatar-sm {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    background: #FDE9B6;
+  }
+
+  .chat-stream {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    scrollbar-width: none;
+  }
+
+  .chat-stream::-webkit-scrollbar {
+    display: none;
+  }
+
+  .msg-group {
+    display: flex;
+    flex-direction: column;
+    max-width: 82%;
+    gap: 4px;
+  }
+
+  .msg-group.me {
+    align-self: flex-end;
+    align-items: flex-end;
+  }
+
+  .msg-group.other,
+  .msg-group.lola {
+    align-self: flex-start;
+    align-items: flex-start;
+  }
+
+  .msg-sender {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    padding: 0 6px;
+  }
+
+  .bubble {
+    padding: 11px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    line-height: 1.42;
+    word-break: break-word;
+  }
+
+  .bubble-me {
+    background: var(--periwinkle);
+    color: #FFFFFF;
+    border-bottom-right-radius: 6px;
+  }
+
+  .bubble-other {
+    background: var(--surface);
+    color: var(--ink);
+    border-bottom-left-radius: 6px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .bubble-lola {
+    background: var(--marigold-bubble);
+    color: var(--ink);
+    border-bottom-left-radius: 6px;
+  }
+
+  .msg-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    padding: 0 4px;
+  }
+
+  .retry-link {
+    color: var(--coral-ink);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .composer-area {
+    padding: 6px 12px 6px;
+    flex-shrink: 0;
+  }
+
+  /* Hidden when empty — zero developer hint text! */
+  .sms-meter {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-secondary);
+  }
+
+  .sms-meter.visible {
+    display: flex;
+  }
+
+  .sms-meter.warn {
+    color: var(--marigold-ink);
+  }
+
+  .composer-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 5px 5px 16px;
+    border-radius: 26px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .composer-input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    font-size: 15px;
+    color: var(--ink);
+    min-width: 0;
+    outline: none;
+  }
+
+  .composer-input::placeholder {
+    color: var(--ink-muted);
+  }
+
+  .send-coral {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--coral);
+    color: #FFFFFF;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  /* ===================================================
+     SCREEN 5: PEEKING LOLA LOADING / SYNC STATE (Seamless Light & Dark)
+     =================================================== */
+  .peeking-screen {
+    background: #E9EAFC;
+    color: #1A1826;
+  }
+
+  html[data-theme="dark"] .peeking-screen {
+    background: #110F1B;
+    color: #F5F3FA;
+  }
+
+  html[data-theme="dark"] .phone-top-chrome.lavender-chrome {
+    background: #110F1B;
+    color: #F5F3FA;
+  }
+
+  .peeking-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 66px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .ring-spinner {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 5px solid rgba(94, 105, 220, 0.22);
+    border-top-color: var(--periwinkle);
+    margin: 0 auto 14px;
+    animation: spin 1.1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .peeking-heading {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: inherit;
+  }
+
+  .peeking-sub {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ink-secondary);
+  }
+
+  .peeking-stage {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    overflow: hidden;
+    padding-top: 10px;
+  }
+
+  html[data-theme="dark"] .peeking-stage {
+    background: #E9EAFC;
+    border-top-left-radius: 50% 42px;
+    border-top-right-radius: 50% 42px;
+    padding-top: 0;
+    margin-bottom: -14px;
+    padding-bottom: 14px;
+  }
+
+  .peeking-img {
+    width: 100%;
+    max-width: 312px;
+    height: 296px;
+    object-fit: cover;
+    object-position: center bottom;
+    display: block;
+    margin-bottom: -14px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
+  }
+
+  html[data-theme="dark"] .peeking-img {
+    height: 274px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
+  }
+
+  /* ===================================================
+     SCREEN 5: CLEAN USER SETTINGS (Zero Test/QA Buttons!)
+     =================================================== */
+  .profile-banner {
+    padding: 14px;
+    border-radius: 22px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .group-card {
+    border-radius: 22px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    padding: 4px 16px;
+    margin-bottom: 14px;
+  }
+
+  .setting-row {
+    padding: 13px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .setting-row + .setting-row {
+    border-top: 1px solid var(--divider);
+  }
+
+  .setting-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+
+  .setting-sub {
+    font-size: 12px;
+    color: var(--ink-secondary);
+    margin-top: 2px;
+  }
+
+  /* Clean Apple Switch Toggle */
+  .ios-switch {
+    width: 46px;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    padding: 3px;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 180ms var(--ease-out);
+    flex-shrink: 0;
+  }
+
+  .ios-switch.on {
+    background: var(--mint);
+  }
+
+  .ios-knob {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    transition: transform 180ms var(--ease-out);
+  }
+
+  .ios-switch.on .ios-knob {
+    transform: translateX(18px);
+  }
+
+  .signout-btn {
+    width: 100%;
+    min-height: 46px;
+    border-radius: 18px;
+    background: var(--coral-soft);
+    color: var(--coral-ink);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  /* Feedback Confirmation Footer */
+  .decision-panel {
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 24px 26px;
+    border-radius: 26px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .decision-panel h2 {
+    margin: 0 0 6px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .decision-panel p {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: var(--ink-secondary);
+  }
+
+  .options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .option {
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: var(--canvas);
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: transform 150ms var(--ease-out), background-color 150ms var(--ease-out);
+  }
+
+  .option.selected {
+    background: var(--periwinkle-soft);
+    box-shadow: inset 0 0 0 2px var(--periwinkle);
+  }
+
+  .letter {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--periwinkle);
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .option.selected .letter {
+    background: var(--periwinkle);
+    color: #FFFFFF;
+  }
+
+  .option h3 {
+    margin: 0 0 3px;
+    font-size: 0.94rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .option p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--ink-secondary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, .ring-spinner {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <img class="topbar-avatar" src="./assets/lola-avatar.jpg" alt="Lola Gateway mascot">
+      <div>
+        <h1 class="topbar-title">Lola Gateway: UI Wireframes (All 6 Screens)</h1>
+        <p class="topbar-sub">CS 312 Mobile Computing (Group 1, CS3103) | Plain Kotlin Android Gateway &amp; Standalone Family Web Chat</p>
+      </div>
+    </div>
+
+    <div class="topbar-controls">
+      <div class="seg-group" role="tablist" aria-label="Theme mode">
+        <button class="seg-btn active" id="btn-light" onclick="setTheme('light')">Light Cream</button>
+        <button class="seg-btn" id="btn-dark" onclick="setTheme('dark')">Dark Twilight</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="gallery">
+
+    <!-- ==================== SCREEN 1: WELCOME & GOOGLE SIGN-IN ==================== -->
+    <div class="screen-unit">
+      <div class="screen-meta">
+        <span class="screen-name">1. Welcome &amp; Sign In</span>
+        <span class="screen-app">Onboarding</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-top-chrome periwinkle-chrome">
+            <div class="status-bar">
+              <span class="tnum">9:41</span>
+              <div class="dynamic-island"></div>
+              <span class="sb-icons" aria-hidden="true">
+                <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="6" width="2.5" height="5" rx="0.8"/><rect x="4" y="4" width="2.5" height="7" rx="0.8"/><rect x="8" y="2" width="2.5" height="9" rx="0.8"/><rect x="12" y="0" width="2.5" height="11" rx="0.8"/></svg>
+                <svg width="20" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.7" y="1" width="18" height="9" rx="2.4" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="2.8" width="13.5" height="5.4" rx="1.2" fill="currentColor"/><rect x="19.6" y="3.8" width="1.8" height="3.4" rx="0.9" fill="currentColor"/></svg>
+              </span>
+            </div>
+          </div>
+
+          <div class="onboard-canopy">
+            <div class="onboard-wordmark">lola gateway</div>
+            <p class="onboard-sub">Keep Lola in the family chat</p>
+            <img class="lola-hero-img" src="./assets/lola-welcome.jpg" alt="Smiling Lola mascot waving hello">
+          </div>
+
+          <div class="onboard-body">
+            <div>
+              <h3 class="onboard-title" id="onboard-heading">Welcome home</h3>
+              <p class="onboard-desc" id="onboard-copy">Sign in with Google, then join with your family code.</p>
+
+              <div class="role-switch" role="tablist">
+                <button class="role-btn active" onclick="switchOnboardRole('family', this)">Family Member</button>
+                <button class="role-btn" onclick="switchOnboardRole('gateway', this)">Gateway Phone</button>
+              </div>
+
+              <input class="soft-input" id="onboard-input" type="text" placeholder="Family code (e.g. LOLA-4821)" aria-label="Family code or senior phone number">
+            </div>
+
+            <div>
+              <button class="pill-cta pill-cta-white" style="margin-bottom:9px;" onclick="flashButton(this, 'Signed in with Google')">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/>
+                  <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1C3.3 21.3 7.3 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.3 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.6H1.3C.5 8.2 0 10.1 0 12s.5 3.8 1.3 5.4l4-3.1z"/>
+                  <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C17.9 1.2 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z"/>
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+              <button class="pill-cta" id="onboard-cta" onclick="flashButton(this, 'Joining chat...')">Join Family Chat</button>
+              <span class="quiet-link">No app needed on Lola's keypad phone</span>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 2: HOME (MESSAGING APP: PEOPLE + GROUP CHATS) ==================== -->
+    <div class="screen-unit">
+      <div class="screen-meta">
+        <span class="screen-name">2. Home (Chats &amp; People)</span>
+        <span class="screen-app">Android &amp; Web</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-top-chrome">
+            <div class="status-bar">
+              <span class="tnum">9:41</span>
+              <div class="dynamic-island"></div>
+              <span class="sb-icons" aria-hidden="true">
+                <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="6" width="2.5" height="5" rx="0.8"/><rect x="4" y="4" width="2.5" height="7" rx="0.8"/><rect x="8" y="2" width="2.5" height="9" rx="0.8"/><rect x="12" y="0" width="2.5" height="11" rx="0.8"/></svg>
+                <svg width="20" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.7" y="1" width="18" height="9" rx="2.4" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="2.8" width="13.5" height="5.4" rx="1.2" fill="currentColor"/><rect x="19.6" y="3.8" width="1.8" height="3.4" rx="0.9" fill="currentColor"/></svg>
+              </span>
+            </div>
+            <div class="nav-bar">
+              <h3 class="app-h1">Messages</h3>
+              <span class="status-inline" id="home-gw-status">
+                <span class="dot dot-mint" id="home-gw-dot"></span>
+                <span id="home-gw-text">Online</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="scroll-area">
+            <!-- Soft Borderless Search -->
+            <div class="search-wrap">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input class="search-input" type="text" placeholder="Search people or chats" oninput="filterThreads(this.value)">
+            </div>
+
+            <!-- Subtle Gateway Status Strip (Tap to cycle Wi-Fi / 4G / Paused) -->
+            <div class="bridge-mini" id="bridge-mini" data-state="wifi" onclick="cycleMiniBridge()" title="Tap to preview Gateway states">
+              <div class="bridge-mini-left">
+                <span class="dot dot-mint" id="mini-dot"></span>
+                <div>
+                  <div class="bridge-mini-title" id="mini-title">SMS Bridge Active</div>
+                  <div class="bridge-mini-sub tnum" id="mini-sub">Wi-Fi · Globe SIM · 94%</div>
+                </div>
+              </div>
+              <span class="bridge-mini-action" id="mini-action">Pause</span>
+            </div>
+
+            <!-- People Row -->
+            <div class="section-row-head">
+              <span class="section-label">People</span>
+              <span class="section-label tnum" style="opacity:0.7;">5 in family</span>
+            </div>
+            <div class="people-strip">
+              <div class="person-chip">
+                <div class="avatar-wrap">
+                  <img class="avatar-img" src="./assets/lola-avatar.jpg" alt="Lola Elena">
+                  <span class="presence-dot" style="background:var(--marigold);" title="Keypad SMS"></span>
+                </div>
+                <span class="person-name">Lola</span>
+              </div>
+              <div class="person-chip">
+                <div class="avatar-wrap">
+                  <div class="avatar-init" style="background:var(--periwinkle-soft);color:var(--periwinkle);">G</div>
+                  <span class="presence-dot"></span>
+                </div>
+                <span class="person-name">Gadiel</span>
+              </div>
+              <div class="person-chip">
+                <div class="avatar-wrap">
+                  <div class="avatar-init" style="background:var(--coral-soft);color:var(--coral-ink);">M</div>
+                  <span class="presence-dot"></span>
+                </div>
+                <span class="person-name">Tita M</span>
+              </div>
+              <div class="person-chip">
+                <div class="avatar-wrap">
+                  <div class="avatar-init" style="background:var(--mint-soft);color:var(--mint-ink);">J</div>
+                </div>
+                <span class="person-name">Tito Jun</span>
+              </div>
+              <div class="person-chip">
+                <div class="avatar-wrap">
+                  <div class="avatar-init" style="background:var(--marigold-bubble);color:var(--marigold-ink);">B</div>
+                  <span class="presence-dot"></span>
+                </div>
+                <span class="person-name">Ate Bea</span>
+              </div>
+            </div>
+
+            <!-- Chats & Group Chats -->
+            <div class="section-row-head">
+              <span class="section-label">Chats</span>
+            </div>
+            <div class="chat-list" id="chat-list">
+              <button class="thread-row active-thread" data-search="manalo family group lola kumain">
+                <div class="group-avatar-stack">
+                  <img class="group-av-main" src="./assets/lola-avatar.jpg" alt="Manalo Family">
+                  <span class="group-av-sub">+4</span>
+                </div>
+                <div class="thread-mid">
+                  <div class="thread-top">
+                    <span class="thread-title">Manalo Family</span>
+                    <span class="thread-time tnum">6:44 PM</span>
+                  </div>
+                  <div class="thread-bottom">
+                    <p class="thread-preview">Lola: Kumain na ako apo, ingat sa school</p>
+                    <span class="unread-dot tnum">2</span>
+                  </div>
+                </div>
+              </button>
+
+              <button class="thread-row" data-search="lola elena direct sms keypad gamot">
+                <img class="avatar-img" style="width:48px;height:48px;flex-shrink:0;" src="./assets/lola-avatar.jpg" alt="Lola Elena">
+                <div class="thread-mid">
+                  <div class="thread-top">
+                    <span class="thread-title">Lola Elena</span>
+                    <span class="thread-time tnum">6:10 PM</span>
+                  </div>
+                  <div class="thread-bottom">
+                    <p class="thread-preview">Uminom na din ng gamot</p>
+                    <span class="sms-tag-inline">SMS</span>
+                  </div>
+                </div>
+              </button>
+
+              <button class="thread-row" data-search="tita marites pansit linggo">
+                <div class="avatar-init" style="width:48px;height:48px;flex-shrink:0;background:var(--coral-soft);color:var(--coral-ink);">M</div>
+                <div class="thread-mid">
+                  <div class="thread-top">
+                    <span class="thread-title">Tita Marites</span>
+                    <span class="thread-time tnum">5:20 PM</span>
+                  </div>
+                  <div class="thread-bottom">
+                    <p class="thread-preview">Uuwi kami sa Linggo po</p>
+                  </div>
+                </div>
+              </button>
+
+              <button class="thread-row" data-search="ate bea batstateu">
+                <div class="avatar-init" style="width:48px;height:48px;flex-shrink:0;background:var(--marigold-bubble);color:var(--marigold-ink);">B</div>
+                <div class="thread-mid">
+                  <div class="thread-top">
+                    <span class="thread-title">Ate Bea</span>
+                    <span class="thread-time tnum">Yesterday</span>
+                  </div>
+                  <div class="thread-bottom">
+                    <p class="thread-preview">Na-send ko na kay Lola yung update</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Icon-Only Bottom Dock (Chats, People, Settings — NO Queue Tab) + Compose on Right -->
+          <div class="dock-wrap">
+            <nav class="icon-dock" aria-label="Main navigation">
+              <button class="dock-btn active" aria-label="Chats">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.5 3 2 6.9 2 11.7c0 2.5 1.2 4.8 3.2 6.4L4 21.5l3.9-1.5c1.3.4 2.7.6 4.1.6 5.5 0 10-3.9 10-8.9S17.5 3 12 3Z"/></svg>
+              </button>
+              <button class="dock-btn" aria-label="People">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.5a4.5 4.5 0 0 1 4 4.5"/></svg>
+              </button>
+              <button class="dock-btn" aria-label="Settings">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+              </button>
+            </nav>
+            <button class="dock-primary-right" aria-label="New message" title="New message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+    
+    <!-- ==================== SCREEN 3: PEOPLE TAB ==================== -->
+    <div class="screen-unit">
+      <div class="screen-meta">
+        <span class="screen-name">3. People</span>
+        <span class="screen-app">Family &amp; Lola</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-top-chrome">
+            <div class="status-bar">
+              <span class="tnum">9:41</span>
+              <div class="dynamic-island"></div>
+              <span class="sb-icons" aria-hidden="true">
+                <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="6" width="2.5" height="5" rx="0.8"/><rect x="4" y="4" width="2.5" height="7" rx="0.8"/><rect x="8" y="2" width="2.5" height="9" rx="0.8"/><rect x="12" y="0" width="2.5" height="11" rx="0.8"/></svg>
+                <svg width="20" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.7" y="1" width="18" height="9" rx="2.4" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="2.8" width="13.5" height="5.4" rx="1.2" fill="currentColor"/><rect x="19.6" y="3.8" width="1.8" height="3.4" rx="0.9" fill="currentColor"/></svg>
+              </span>
+            </div>
+            <div class="nav-bar">
+              <h3 class="app-h1">People</h3>
+              <button class="invite-text-btn" onclick="flashButton(this, 'Code Copied')">+ Invite</button>
+            </div>
+          </div>
+
+          <div class="scroll-area">
+            <div class="section-row-head">
+              <span class="section-label">Linked Keypad Senior</span>
+            </div>
+            <div class="senior-card">
+              <img class="senior-card-avatar" src="./assets/lola-avatar.jpg" alt="Lola Elena">
+              <div class="senior-card-mid">
+                <div class="senior-card-name">Lola Elena</div>
+                <div class="senior-card-num tnum">+63 917 *** 4567</div>
+                <span class="status-inline" style="font-size:11.5px;"><span class="dot dot-mint"></span>Reachable via SMS</span>
+              </div>
+              <button class="msg-icon-btn" aria-label="Message Lola" onclick="flashButton(this, 'Open')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.5 3 2 6.9 2 11.7c0 2.5 1.2 4.8 3.2 6.4L4 21.5l3.9-1.5c1.3.4 2.7.6 4.1.6 5.5 0 10-3.9 10-8.9S17.5 3 12 3Z"/></svg>
+              </button>
+            </div>
+
+            <div class="section-row-head">
+              <span class="section-label">Family Members</span>
+              <span class="section-label tnum" style="opacity:0.7;">4 joined</span>
+            </div>
+            <div class="group-card">
+              <div class="member-row">
+                <div class="member-av" style="background:var(--periwinkle-soft);color:var(--periwinkle);">
+                  G
+                  <span class="member-dot" style="background:var(--mint);"></span>
+                </div>
+                <div class="member-mid">
+                  <div class="member-name">Gadiel Manalo</div>
+                  <div class="member-role">You · Gateway Host · SMS: "Gadiel"</div>
+                </div>
+              </div>
+              <div class="member-row">
+                <div class="member-av" style="background:var(--coral-soft);color:var(--coral-ink);">
+                  M
+                  <span class="member-dot" style="background:var(--mint);"></span>
+                </div>
+                <div class="member-mid">
+                  <div class="member-name">Tita Marites</div>
+                  <div class="member-role">Online · SMS: "Marites"</div>
+                </div>
+              </div>
+              <div class="member-row">
+                <div class="member-av" style="background:var(--mint-soft);color:var(--mint-ink);">
+                  J
+                </div>
+                <div class="member-mid">
+                  <div class="member-name">Tito Jun</div>
+                  <div class="member-role">Last seen 2h ago · SMS: "Jun"</div>
+                </div>
+              </div>
+              <div class="member-row">
+                <div class="member-av" style="background:var(--marigold-bubble);color:var(--marigold-ink);">
+                  B
+                  <span class="member-dot" style="background:var(--mint);"></span>
+                </div>
+                <div class="member-mid">
+                  <div class="member-name">Ate Bea</div>
+                  <div class="member-role">Online · SMS: "Bea"</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="invite-card">
+              <div>
+                <div class="setting-sub" style="margin:0;">Family Join Code</div>
+                <div class="invite-code-val tnum">LOLA-4821</div>
+              </div>
+              <button class="copy-pill-sm" onclick="flashButton(this, 'Copied')">Copy Code</button>
+            </div>
+          </div>
+
+          <div class="dock-wrap">
+            <nav class="icon-dock" aria-label="Main navigation">
+              <button class="dock-btn" aria-label="Chats">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20.5l1.4-4.7A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+              </button>
+              <button class="dock-btn active" aria-label="People">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.5a4.5 4.5 0 0 1 4 4.5"/></svg>
+              </button>
+              <button class="dock-btn" aria-label="Settings">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+              </button>
+            </nav>
+            <button class="dock-primary-right" aria-label="New message" title="New message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+    <!-- ==================== SCREEN 4: FAMILY GROUP CHAT ==================== -->
+    <div class="screen-unit">
+      <div class="screen-meta">
+        <span class="screen-name">4. Family Group Chat</span>
+        <span class="screen-app">Live SMS Thread</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen chat-screen">
+          <!-- Seamless Unified Frosted Top Bar (No step/seam under Dynamic Island) -->
+          <div class="phone-top-chrome chat-chrome">
+            <div class="status-bar">
+              <span class="tnum">9:41</span>
+              <div class="dynamic-island"></div>
+              <span class="sb-icons" aria-hidden="true">
+                <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="6" width="2.5" height="5" rx="0.8"/><rect x="4" y="4" width="2.5" height="7" rx="0.8"/><rect x="8" y="2" width="2.5" height="9" rx="0.8"/><rect x="12" y="0" width="2.5" height="11" rx="0.8"/></svg>
+                <svg width="20" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.7" y="1" width="18" height="9" rx="2.4" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="2.8" width="13.5" height="5.4" rx="1.2" fill="currentColor"/><rect x="19.6" y="3.8" width="1.8" height="3.4" rx="0.9" fill="currentColor"/></svg>
+              </span>
+            </div>
+            <div class="chat-nav">
+              <div class="chat-bar-left">
+                <button class="bare-back" aria-label="Back">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div class="chat-title-block">
+                  <h2>Manalo Family</h2>
+                  <span class="status-inline" style="font-size:11.5px;"><span class="dot dot-mint"></span>Lola reachable via SMS</span>
+                </div>
+              </div>
+              <img class="chat-avatar-sm" src="./assets/lola-avatar.jpg" alt="Lola Elena">
+            </div>
+          </div>
+
+          <div class="chat-stream" id="chat-stream">
+            <div class="msg-group me">
+              <div class="bubble bubble-me">Lola kumusta po? Nakainom na po kayo ng gamot?</div>
+              <span class="msg-status tnum"><span class="dot dot-mint"></span>Delivered · 6:42 PM</span>
+            </div>
+
+            <div class="msg-group lola">
+              <span class="msg-sender">Lola Elena · via SMS</span>
+              <div class="bubble bubble-lola">Kumain na ako apo, uminom na din. Ingat ka sa school!</div>
+              <span class="msg-status tnum">6:44 PM</span>
+            </div>
+
+            <div class="msg-group other">
+              <span class="msg-sender">Tita Marites</span>
+              <div class="bubble bubble-other">Uuwi kami sa Linggo po, magdadala kami ng pansit.</div>
+              <span class="msg-status tnum"><span class="dot dot-amber"></span>Pending · keypad may be off</span>
+            </div>
+          </div>
+
+          <!-- Clean Composer: Zero text above input until user starts typing! -->
+          <div class="composer-area">
+            <div class="sms-meter tnum" id="sms-meter">
+              <span id="sms-enc"></span>
+              <span id="sms-count"></span>
+            </div>
+            <form class="composer-bar" onsubmit="sendDemoChat(event)">
+              <input class="composer-input" id="chat-input" type="text" placeholder="Message family..." oninput="updateSmsMeter(this.value)" autocomplete="off">
+              <button type="submit" class="send-coral" aria-label="Send message">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </button>
+            </form>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 4: LOADING / CONNECTING (Peeking Lola Asset!) ==================== -->
+    <div class="screen-unit">
+      <div class="screen-meta">
+        <span class="screen-name">5. Loading &amp; Sync State</span>
+        <span class="screen-app">Syncing State</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen peeking-screen">
+          <div class="phone-top-chrome lavender-chrome">
+            <div class="status-bar">
+              <span class="tnum">9:41</span>
+              <div class="dynamic-island"></div>
+              <span class="sb-icons" aria-hidden="true">
+                <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="6" width="2.5" height="5" rx="0.8"/><rect x="4" y="4" width="2.5" height="7" rx="0.8"/><rect x="8" y="2" width="2.5" height="9" rx="0.8"/><rect x="12" y="0" width="2.5" height="11" rx="0.8"/></svg>
+                <svg width="20" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.7" y="1" width="18" height="9" rx="2.4" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="2.8" width="13.5" height="5.4" rx="1.2" fill="currentColor"/><rect x="19.6" y="3.8" width="1.8" height="3.4" rx="0.9" fill="currentColor"/></svg>
+              </span>
+            </div>
+          </div>
+
+          <div class="peeking-center">
+            <div>
+              <div class="ring-spinner" aria-hidden="true"></div>
+              <h3 class="peeking-heading">Connecting to family</h3>
+              <p class="peeking-sub">Checking for new texts from Lola...</p>
+            </div>
+            <div class="peeking-stage"><img class="peeking-img" src="./assets/lola-peeking.jpg" alt="Cute Lola peeking up cheerfully"></div>
+          </div>
+          <div class="home-indicator" style="background:#1A1826;position:relative;z-index:2;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 5: CLEAN USER SETTINGS (Zero Test Buttons) ==================== -->
+    <div class="screen-unit">
+      <div class="screen-meta">
+        <span class="screen-name">6. Settings</span>
+        <span class="screen-app">Account &amp; Bridge</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-top-chrome">
+            <div class="status-bar">
+              <span class="tnum">9:41</span>
+              <div class="dynamic-island"></div>
+              <span class="sb-icons" aria-hidden="true">
+                <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="6" width="2.5" height="5" rx="0.8"/><rect x="4" y="4" width="2.5" height="7" rx="0.8"/><rect x="8" y="2" width="2.5" height="9" rx="0.8"/><rect x="12" y="0" width="2.5" height="11" rx="0.8"/></svg>
+                <svg width="20" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.7" y="1" width="18" height="9" rx="2.4" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="2.8" width="13.5" height="5.4" rx="1.2" fill="currentColor"/><rect x="19.6" y="3.8" width="1.8" height="3.4" rx="0.9" fill="currentColor"/></svg>
+              </span>
+            </div>
+            <div class="nav-bar">
+              <h3 class="app-h1">Settings</h3>
+            </div>
+          </div>
+
+          <div class="scroll-area">
+            <div class="profile-banner">
+              <div class="avatar-init" style="width:46px;height:46px;flex-shrink:0;background:var(--periwinkle-soft);color:var(--periwinkle);">G</div>
+              <div style="min-width:0;flex:1;">
+                <div class="setting-title">Gadiel Manalo</div>
+                <div class="setting-sub">Shown to Lola as "Gadiel"</div>
+              </div>
+              <span style="font-size:13px;font-weight:600;color:var(--periwinkle);">Edit</span>
+            </div>
+
+            <div class="section-row-head"><span class="section-label">Family &amp; Lola</span></div>
+            <div class="group-card">
+              <div class="setting-row">
+                <div>
+                  <div class="setting-title">Lola Elena</div>
+                  <div class="setting-sub tnum">+63 917 *** 4567 · Allowed sender</div>
+                </div>
+                <span style="font-size:13px;font-weight:600;color:var(--periwinkle);">Edit</span>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-title">Family Join Code</div>
+                  <div class="setting-sub tnum">LOLA-4821</div>
+                </div>
+                <button style="font-size:13px;font-weight:600;color:var(--periwinkle);" onclick="flashButton(this, 'Copied')">Copy</button>
+              </div>
+            </div>
+
+            <div class="section-row-head"><span class="section-label">Gateway Phone</span></div>
+            <div class="group-card">
+              <div class="setting-row">
+                <div>
+                  <div class="setting-title">SMS Bridge</div>
+                  <div class="setting-sub" id="set-bridge-sub">Active on Wi-Fi · Globe 4G</div>
+                </div>
+                <button class="ios-switch on" id="bridge-switch" role="switch" aria-checked="true" aria-label="Toggle SMS bridge" onclick="toggleSettingsSwitch(this)">
+                  <span class="ios-knob"></span>
+                </button>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-title">Background Reliability</div>
+                  <div class="setting-sub">SMS &amp; battery access ready</div>
+                </div>
+                <span class="status-inline"><span class="dot dot-mint"></span>Ready</span>
+              </div>
+            </div>
+
+            <div class="section-row-head"><span class="section-label">Preferences</span></div>
+            <div class="group-card">
+              <div class="setting-row">
+                <div>
+                  <div class="setting-title">Appearance</div>
+                  <div class="setting-sub">Follows system theme</div>
+                </div>
+                <span style="font-size:13px;font-weight:600;color:var(--ink-secondary);">Auto</span>
+              </div>
+            </div>
+
+            <button class="signout-btn" onclick="flashButton(this, 'Signed out')">Sign Out</button>
+          </div>
+
+          <div class="dock-wrap">
+            <nav class="icon-dock" aria-label="Main navigation">
+              <button class="dock-btn" aria-label="Chats">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20.5l1.4-4.7A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+              </button>
+              <button class="dock-btn" aria-label="People">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.5a4.5 4.5 0 0 1 4 4.5"/></svg>
+              </button>
+              <button class="dock-btn active" aria-label="Settings">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+              </button>
+            </nav>
+            <button class="dock-primary-right" aria-label="New message" title="New message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+<script>
+  function setTheme(mode) {
+    const root = document.documentElement;
+    const meta = document.getElementById('meta-color-scheme');
+    root.classList.add('theme-switching');
+    root.setAttribute('data-theme', mode);
+    if (meta) meta.setAttribute('content', mode === 'dark' ? 'dark only' : 'light only');
+    document.getElementById('btn-light').classList.toggle('active', mode === 'light');
+    document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
+    void root.offsetHeight;
+    requestAnimationFrame(() => root.classList.remove('theme-switching'));
+  }
+
+  function switchOnboardRole(role, btn) {
+    btn.parentElement.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const heading = document.getElementById('onboard-heading');
+    const copy = document.getElementById('onboard-copy');
+    const input = document.getElementById('onboard-input');
+    const cta = document.getElementById('onboard-cta');
+    if (role === 'family') {
+      heading.textContent = 'Welcome home';
+      copy.textContent = 'Sign in with Google, then join with your family code.';
+      input.placeholder = 'Family code (e.g. LOLA-4821)';
+      cta.textContent = 'Join Family Chat';
+    } else {
+      heading.textContent = 'Set up Gateway';
+      copy.textContent = 'Link Lola\'s keypad number to create your family chat.';
+      input.placeholder = 'Lola\'s number (e.g. 0917 123 4567)';
+      cta.textContent = 'Create Family Bridge';
+    }
+  }
+
+  const bridgeStates = ['wifi', '4g', 'paused'];
+  let bridgeIdx = 0;
+  function cycleMiniBridge() {
+    bridgeIdx = (bridgeIdx + 1) % bridgeStates.length;
+    const st = bridgeStates[bridgeIdx];
+    const box = document.getElementById('bridge-mini');
+    const dot = document.getElementById('mini-dot');
+    const title = document.getElementById('mini-title');
+    const sub = document.getElementById('mini-sub');
+    const action = document.getElementById('mini-action');
+    const hDot = document.getElementById('home-gw-dot');
+    const hText = document.getElementById('home-gw-text');
+
+    box.setAttribute('data-state', st);
+    dot.className = 'dot';
+    hDot.className = 'dot';
+
+    if (st === 'wifi') {
+      dot.classList.add('dot-mint');
+      hDot.classList.add('dot-mint');
+      title.textContent = 'SMS Bridge Active';
+      sub.textContent = 'Wi-Fi · Globe SIM · 94%';
+      action.textContent = 'Pause';
+      hText.textContent = 'Online';
+    } else if (st === '4g') {
+      dot.classList.add('dot-amber');
+      hDot.classList.add('dot-amber');
+      title.textContent = 'Bridge on 4G Backup';
+      sub.textContent = '4G LTE · Globe SIM · 91%';
+      action.textContent = 'Pause';
+      hText.textContent = '4G Backup';
+    } else {
+      dot.classList.add('dot-coral');
+      hDot.classList.add('dot-coral');
+      title.textContent = 'SMS Bridge Paused';
+      sub.textContent = 'Incoming texts held locally';
+      action.textContent = 'Resume';
+      hText.textContent = 'Paused';
+    }
+  }
+
+  function filterThreads(q) {
+    const query = q.trim().toLowerCase();
+    document.querySelectorAll('#chat-list .thread-row').forEach(row => {
+      const hay = (row.dataset.search || '').toLowerCase();
+      row.style.display = !query || hay.includes(query) ? 'flex' : 'none';
+    });
+  }
+
+  function isGsm7(str) {
+    return /^[\x20-\x7E\n\r@£$¥èéùìòÇØøÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ¤¡ÄÖÑÜ§¿äöñüà]*$/.test(str);
+  }
+
+  function updateSmsMeter(val) {
+    const meter = document.getElementById('sms-meter');
+    const enc = document.getElementById('sms-enc');
+    const count = document.getElementById('sms-count');
+    if (!val) {
+      meter.classList.remove('visible', 'warn');
+      enc.textContent = '';
+      count.textContent = '';
+      return;
+    }
+    const prefixed = 'Gadiel: ' + val;
+    const gsm = isGsm7(prefixed);
+    const single = gsm ? 160 : 70;
+    const multi = gsm ? 153 : 67;
+    const len = prefixed.length;
+    const parts = len <= single ? 1 : Math.ceil(len / multi);
+    const limit = parts === 1 ? single : parts * multi;
+
+    meter.classList.add('visible');
+    meter.classList.toggle('warn', !gsm || parts > 1);
+    enc.textContent = gsm ? 'GSM-7' : 'UCS-2 (shorter per SMS)';
+    count.textContent = `${len}/${limit} · ${parts} SMS`;
+  }
+
+  function sendDemoChat(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const stream = document.getElementById('chat-stream');
+    const group = document.createElement('div');
+    group.className = 'msg-group me';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble bubble-me';
+    bubble.textContent = text;
+
+    const status = document.createElement('span');
+    status.className = 'msg-status tnum';
+    status.innerHTML = '<span class="dot dot-amber"></span>Queued';
+
+    group.appendChild(bubble);
+    group.appendChild(status);
+    stream.appendChild(group);
+    stream.scrollTop = stream.scrollHeight;
+    input.value = '';
+    updateSmsMeter('');
+
+    setTimeout(() => { status.innerHTML = '<span class="dot dot-peri"></span>Sent'; }, 700);
+    setTimeout(() => { status.innerHTML = '<span class="dot dot-mint"></span>Delivered · just now'; }, 1800);
+  }
+
+  function toggleSettingsSwitch(btn) {
+    const isOn = btn.classList.toggle('on');
+    btn.setAttribute('aria-checked', String(isOn));
+    document.getElementById('set-bridge-sub').textContent = isOn
+      ? 'Active on Wi-Fi · Globe 4G'
+      : 'Paused · messages will queue';
+  }
+
+  function flashButton(btn, label) {
+    const orig = btn.innerHTML;
+    btn.textContent = label;
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }, 1100);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 920" width="1400" height="920" role="img" aria-label="Lola Gateway Backend Architecture and SMS Relay Workflow">
+  <defs>
+    <style>
+      .font { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Display", Helvetica, Arial, sans-serif; }
+      .title { font-size: 22px; font-weight: 800; fill: #1A1826; letter-spacing: -0.4px; }
+      .subtitle { font-size: 13px; font-weight: 500; fill: #5B566E; }
+      .band-label { font-size: 11px; font-weight: 700; fill: #6B6580; letter-spacing: 0.7px; }
+      .box-title { font-size: 14.5px; font-weight: 700; fill: #1A1826; }
+      .box-tag { font-size: 10.5px; font-weight: 700; fill: #4A55C8; }
+      .box-tag-muted { font-size: 10.5px; font-weight: 700; fill: #6D6658; }
+      .bullet { font-size: 12.2px; font-weight: 500; fill: #353147; }
+      .bullet-bold { font-size: 12.2px; font-weight: 700; fill: #1A1826; }
+      .arrow-lbl-out { font-size: 11.5px; font-weight: 700; fill: #3D46B8; }
+      .arrow-lbl-in { font-size: 11.5px; font-weight: 700; fill: #9A5B00; }
+      .arrow-lbl-sync { font-size: 11.5px; font-weight: 700; fill: #13704D; }
+      .fsm-title { font-size: 12.5px; font-weight: 800; fill: #1A1826; }
+      .fsm-node { font-size: 11.5px; font-weight: 700; }
+      .fsm-note { font-size: 11.2px; font-weight: 500; fill: #4D4861; }
+    </style>
+
+    <!-- Arrowheads -->
+    <marker id="arr-out" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.8 5 L 1 8.5 z" fill="#5E69DC"/>
+    </marker>
+    <marker id="arr-in" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.8 5 L 1 8.5 z" fill="#D98A00"/>
+    </marker>
+    <marker id="arr-sync" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.8 5 L 1 8.5 z" fill="#1D9468"/>
+    </marker>
+    <marker id="arr-slate" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 1 1.5 L 8.8 5 L 1 8.5 z" fill="#6E6982"/>
+    </marker>
+    <filter id="soft-shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#1A1826" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Crisp Academic Canvas -->
+  <rect x="0" y="0" width="1400" height="920" rx="16" fill="#FFFFFF"/>
+
+  <!-- Header -->
+  <text x="44" y="42" class="font title">Lola Gateway: System Architecture &amp; Backend SMS Relay Workflow</text>
+  <text x="44" y="64" class="font subtitle">CS 312 Mobile Computing (Group 1, CS3103)  |  Layered Store-and-Forward Bridge  |  Firebase Spark + Cloudflare Worker + Plain Kotlin</text>
+
+  <!-- Header Legend -->
+  <g transform="translate(888, 22)">
+    <rect x="0" y="0" width="116" height="26" rx="13" fill="#E9EAFC" stroke="#5E69DC" stroke-width="1.2"/>
+    <text x="58" y="17" text-anchor="middle" class="font box-tag">Custom-Built</text>
+
+    <rect x="126" y="0" width="136" height="26" rx="13" fill="#F5F2EC" stroke="#BEB49E" stroke-width="1.2"/>
+    <text x="194" y="17" text-anchor="middle" class="font box-tag-muted">Reused / Existing</text>
+
+    <line x1="276" y1="8" x2="306" y2="8" stroke="#5E69DC" stroke-width="2.4" marker-end="url(#arr-out)"/>
+    <text x="314" y="12" class="font arrow-lbl-out">Outbound (1-6)</text>
+
+    <line x1="276" y1="24" x2="306" y2="24" stroke="#D98A00" stroke-width="2.4" marker-end="url(#arr-in)"/>
+    <text x="314" y="28" class="font arrow-lbl-in">Inbound (A-D)</text>
+  </g>
+  <line x1="36" y1="82" x2="1364" y2="82" stroke="#ECE9E2" stroke-width="1.5"/>
+
+  <!-- ==================== LAYER 1 BAND: INTERNET & CLOUD ==================== -->
+  <rect x="36" y="96" width="1328" height="290" rx="18" fill="#F9F9FD" stroke="#E5E3F2" stroke-width="1.2"/>
+  <text x="56" y="120" class="font band-label">INTERNET &amp; CLOUD LAYER  (Wi-Fi / 4G LTE  |  HTTPS  |  Google Auth  |  High-Priority FCM)</text>
+
+  <!-- BOX 1: Family Web Chat -->
+  <g filter="url(#soft-shadow)">
+    <rect x="56" y="136" width="356" height="228" rx="16" fill="#FFFFFF" stroke="#5E69DC" stroke-width="2"/>
+    <path d="M 56 152 Q 56 136 72 136 L 396 136 Q 412 136 412 152 L 412 182 L 56 182 Z" fill="#E9EAFC"/>
+    <text x="74" y="164" class="font box-title">Family Chat Web App</text>
+    <text x="394" y="163" text-anchor="end" class="font box-tag">React PWA</text>
+    <text x="74" y="206" class="font bullet"><tspan class="bullet-bold">Auth:</tspan> Google Sign-In + Family Join Code</text>
+    <text x="74" y="230" class="font bullet"><tspan class="bullet-bold">Composer:</tspan> Live GSM-7 (160) / UCS-2 (70) counter</text>
+    <text x="74" y="254" class="font bullet"><tspan class="bullet-bold">Idempotency:</tspan> Generates UUIDv4 messageId</text>
+    <text x="74" y="278" class="font bullet"><tspan class="bullet-bold">Live UI:</tspan> Real-time Firestore listener for Lola's</text>
+    <text x="86" y="296" class="font bullet">SMS replies &amp; inline delivery statuses</text>
+    <text x="74" y="324" class="font bullet"><tspan class="bullet-bold">Gateway Health:</tspan> Shows Online / 4G / Offline</text>
+    <text x="74" y="348" class="font box-tag">Custom-Built  |  Runs on any phone or laptop browser</text>
+  </g>
+
+  <!-- BOX 2: Cloudflare Worker -->
+  <g filter="url(#soft-shadow)">
+    <rect x="514" y="136" width="340" height="228" rx="16" fill="#FFFFFF" stroke="#5E69DC" stroke-width="2"/>
+    <path d="M 514 152 Q 514 136 530 136 L 838 136 Q 854 136 854 152 L 854 182 L 514 182 Z" fill="#E9EAFC"/>
+    <text x="532" y="164" class="font box-title">Serverless Push Trigger</text>
+    <text x="836" y="163" text-anchor="end" class="font box-tag">Cloudflare Worker</text>
+    <text x="532" y="206" class="font bullet"><tspan class="bullet-bold">Endpoint:</tspan> POST /notify (HTTPS)</text>
+    <text x="532" y="230" class="font bullet"><tspan class="bullet-bold">Security:</tspan> Verifies Firebase ID Token (JWKS)</text>
+    <text x="532" y="254" class="font bullet"><tspan class="bullet-bold">FCM HTTP v1:</tspan> Mints OAuth2 token from</text>
+    <text x="544" y="272" class="font bullet">Service Account secrets and triggers push</text>
+    <text x="532" y="298" class="font bullet"><tspan class="bullet-bold">Speed:</tspan> ~0.2s edge wake (zero cold start)</text>
+    <text x="532" y="322" class="font bullet"><tspan class="bullet-bold">Cost:</tspan> 100k pushes/day free, no card needed</text>
+    <text x="532" y="348" class="font box-tag">Custom-Built  |  Zero-Card replacement for Cloud Functions</text>
+  </g>
+
+  <!-- BOX 3: Firebase Spark Backend -->
+  <g filter="url(#soft-shadow)">
+    <rect x="956" y="136" width="388" height="228" rx="16" fill="#FFFFFF" stroke="#ABA4BC" stroke-width="2"/>
+    <path d="M 956 152 Q 956 136 972 136 L 1328 136 Q 1344 136 1344 152 L 1344 182 L 956 182 Z" fill="#F4F1EA"/>
+    <text x="974" y="164" class="font box-title">Cloud Backend (Firebase Spark)</text>
+    <text x="1326" y="163" text-anchor="end" class="font box-tag-muted">Free Tier</text>
+    <text x="974" y="206" class="font bullet"><tspan class="bullet-bold">Firebase Auth:</tspan> Google Sign-In (50k MAUs free)</text>
+    <text x="974" y="230" class="font bullet"><tspan class="bullet-bold">Cloud Firestore:</tspan> families, members, messages,</text>
+    <text x="986" y="248" class="font bullet">gateway fcmToken, allowListE164, heartbeat</text>
+    <text x="974" y="274" class="font bullet"><tspan class="bullet-bold">Security Rules:</tspan> Scoped strictly to family UIDs</text>
+    <text x="974" y="298" class="font bullet"><tspan class="bullet-bold">FCM:</tspan> High-priority data push wakes idle phone</text>
+    <text x="974" y="322" class="font bullet"><tspan class="bullet-bold">Quota:</tspan> ~3,300-5,000 msgs/day free (no bill risk)</text>
+    <text x="974" y="348" class="font box-tag-muted">Reused Managed Services + Custom Firestore Rules</text>
+  </g>
+
+  <!-- ==================== ROW 1 ARROWS + MIDDLE CORRIDOR ==================== -->
+  <!-- Arrow 2: Web -> Cloudflare Worker -->
+  <line x1="412" y1="242" x2="508" y2="242" stroke="#5E69DC" stroke-width="2.6" marker-end="url(#arr-out)"/>
+  <rect x="424" y="210" width="76" height="22" rx="11" fill="#E9EAFC"/>
+  <text x="462" y="225" text-anchor="middle" class="font arrow-lbl-out">2. /notify</text>
+  <text x="462" y="261" text-anchor="middle" class="font fsm-note">ID Token</text>
+
+  <!-- Arrow 3: Cloudflare Worker -> Firebase FCM -->
+  <line x1="854" y1="242" x2="950" y2="242" stroke="#5E69DC" stroke-width="2.6" marker-end="url(#arr-out)"/>
+  <rect x="863" y="210" width="82" height="22" rx="11" fill="#E9EAFC"/>
+  <text x="904" y="225" text-anchor="middle" class="font arrow-lbl-out">3. FCM v1</text>
+  <text x="904" y="261" text-anchor="middle" class="font fsm-note">High Priority</text>
+
+  <!-- Corridor Arrows between Web (Box 1) and Firebase (Box 3) — completely unobstructed at y=408 & y=434 -->
+  <!-- Outbound 1: Web -> Firebase Firestore (Write QUEUED) -->
+  <path d="M 210 364 L 210 406 L 1018 406 L 1018 370" fill="none" stroke="#5E69DC" stroke-width="2.4" marker-end="url(#arr-out)"/>
+  <rect x="352" y="394" width="276" height="22" rx="11" fill="#FFFFFF" stroke="#D5D8F6" stroke-width="1"/>
+  <text x="490" y="409" text-anchor="middle" class="font arrow-lbl-out">1. Save Outbound Message (status = QUEUED)</text>
+
+  <!-- Inbound D: Firebase Firestore -> Web (Real-time Replies & Statuses) -->
+  <path d="M 1048 364 L 1048 434 L 246 434 L 246 370" fill="none" stroke="#D98A00" stroke-width="2.4" marker-end="url(#arr-in)"/>
+  <rect x="352" y="422" width="292" height="22" rx="11" fill="#FFFFFF" stroke="#F4D89E" stroke-width="1"/>
+  <text x="498" y="437" text-anchor="middle" class="font arrow-lbl-in">D. Real-Time Lola Replies &amp; Status Updates</text>
+
+  <!-- ==================== LAYER 2 BAND: CELLULAR & GATEWAY ==================== -->
+  <rect x="36" y="462" width="1328" height="296" rx="18" fill="#FDFBF6" stroke="#EFE8D8" stroke-width="1.2"/>
+  <text x="56" y="486" class="font band-label">CELLULAR &amp; LOCAL GATEWAY LAYER  (Plain Kotlin Android  |  Room + WorkManager  |  GSM / 4G SMS)</text>
+
+  <!-- BOX 4: Senior's Keypad Phone -->
+  <g filter="url(#soft-shadow)">
+    <rect x="56" y="502" width="356" height="236" rx="16" fill="#FFFFFF" stroke="#C5B99C" stroke-width="2"/>
+    <path d="M 56 518 Q 56 502 72 502 L 396 502 Q 412 502 412 518 L 412 548 L 56 548 Z" fill="#FFF3D1"/>
+    <text x="74" y="530" class="font box-title">Senior's Keypad Phone</text>
+    <text x="394" y="529" text-anchor="end" class="font arrow-lbl-in">No App / No Data</text>
+    <text x="74" y="572" class="font bullet"><tspan class="bullet-bold">Built-in SMS:</tspan> Standard keypad messaging</text>
+    <text x="74" y="596" class="font bullet"><tspan class="bullet-bold">Receives:</tspan> "Gadiel: Kumusta po Lola?"</text>
+    <text x="74" y="620" class="font bullet"><tspan class="bullet-bold">Replies:</tspan> Normal SMS to 1 familiar SIM number</text>
+    <text x="74" y="644" class="font bullet"><tspan class="bullet-bold">Offline Safe:</tspan> If phone is off, telco SMSC holds</text>
+    <text x="86" y="662" class="font bullet">SMS and web shows Pending until delivered</text>
+    <text x="74" y="692" class="font bullet"><tspan class="bullet-bold">Target:</tspan> Outbound &lt;= 60s | Reply &lt;= 30s (90%)</text>
+    <text x="74" y="722" class="font box-tag-muted">Existing User Hardware  |  Zero Setup Required</text>
+  </g>
+
+  <!-- BOX 5: Telco Cellular Network -->
+  <g filter="url(#soft-shadow)">
+    <rect x="514" y="502" width="340" height="236" rx="16" fill="#FFFFFF" stroke="#C5B99C" stroke-width="2"/>
+    <path d="M 514 518 Q 514 502 530 502 L 838 502 Q 854 502 854 518 L 854 548 L 514 548 Z" fill="#F5F2EC"/>
+    <text x="532" y="530" class="font box-title">Telco Cellular Network</text>
+    <text x="836" y="529" text-anchor="end" class="font box-tag-muted">Globe / Smart</text>
+    <text x="532" y="572" class="font bullet"><tspan class="bullet-bold">GSM / 4G Path:</tspan> MS -&gt; BTS -&gt; BSC -&gt; MSC -&gt; SMSC</text>
+    <text x="532" y="596" class="font bullet"><tspan class="bullet-bold">Store-and-Forward:</tspan> Queues SMS at SMSC</text>
+    <text x="532" y="620" class="font bullet"><tspan class="bullet-bold">Payload Limits:</tspan> 140 bytes per segment</text>
+    <text x="544" y="638" class="font bullet">(160/153 GSM-7 or 70/67 UCS-2)</text>
+    <text x="532" y="664" class="font bullet"><tspan class="bullet-bold">Reports:</tspan> Returns Sent ACK + Handset DLR</text>
+    <text x="532" y="690" class="font bullet"><tspan class="bullet-bold">Backup Data:</tspan> Provides 4G LTE if Wi-Fi drops</text>
+    <text x="532" y="722" class="font box-tag-muted">Existing Live PH Telco Infrastructure</text>
+  </g>
+
+  <!-- BOX 6: Lola Gateway Android App -->
+  <g filter="url(#soft-shadow)">
+    <rect x="956" y="502" width="388" height="236" rx="16" fill="#FFFFFF" stroke="#5E69DC" stroke-width="2"/>
+    <path d="M 956 518 Q 956 502 972 502 L 1328 502 Q 1344 502 1344 518 L 1344 548 L 956 548 Z" fill="#E9EAFC"/>
+    <text x="974" y="530" class="font box-title">Lola Gateway Phone + SIM</text>
+    <text x="1326" y="529" text-anchor="end" class="font box-tag">Plain Kotlin</text>
+    <text x="974" y="572" class="font bullet"><tspan class="bullet-bold">Wake &amp; Bridge:</tspan> GatewayFcmService + short FGS</text>
+    <text x="974" y="596" class="font bullet"><tspan class="bullet-bold">Room Queue:</tspan> Idempotent IDs + dispatch lock</text>
+    <text x="974" y="620" class="font bullet"><tspan class="bullet-bold">WorkManager:</tspan> 10s-60s backoff &amp; net catch-up</text>
+    <text x="974" y="644" class="font bullet"><tspan class="bullet-bold">Handoff:</tspan> NetworkCallback (Wi-Fi &lt;-&gt; 4G LTE)</text>
+    <text x="974" y="668" class="font bullet"><tspan class="bullet-bold">Outbound:</tspan> SmsManager + Sent/Delivery intents</text>
+    <text x="974" y="692" class="font bullet"><tspan class="bullet-bold">Inbound:</tspan> SMS_RECEIVED + E.164 Allow-List</text>
+    <text x="974" y="722" class="font box-tag">Custom-Built Native Android App (Jetpack Compose)</text>
+  </g>
+
+  <!-- ==================== VERTICAL ARROWS BETWEEN FIREBASE & GATEWAY ==================== -->
+  <!-- Arrow 4: Firebase FCM -> Gateway Android (Down) -->
+  <line x1="1126" y1="364" x2="1126" y2="496" stroke="#5E69DC" stroke-width="2.6" marker-end="url(#arr-out)"/>
+  <rect x="1062" y="400" width="128" height="44" rx="10" fill="#E9EAFC" stroke="#C5C9F7" stroke-width="1"/>
+  <text x="1126" y="418" text-anchor="middle" class="font arrow-lbl-out">4. High-Priority FCM</text>
+  <text x="1126" y="434" text-anchor="middle" class="font fsm-note">+ Firestore Catch-Up</text>
+
+  <!-- Arrow C: Gateway Android -> Firebase Firestore (Up: Statuses & Inbound Replies) -->
+  <line x1="1276" y1="502" x2="1276" y2="370" stroke="#1D9468" stroke-width="2.6" marker-end="url(#arr-sync)"/>
+  <rect x="1202" y="400" width="148" height="44" rx="10" fill="#E1F5EC" stroke="#A6DFC7" stroke-width="1"/>
+  <text x="1276" y="418" text-anchor="middle" class="font arrow-lbl-sync">C. HTTPS Upload</text>
+  <text x="1276" y="434" text-anchor="middle" class="font fsm-note">Replies &amp; Statuses</text>
+
+  <!-- ==================== ROW 2 HORIZONTAL ARROWS (CELLULAR) ==================== -->
+  <!-- Outbound 5: Gateway -> Telco -->
+  <line x1="956" y1="582" x2="860" y2="582" stroke="#5E69DC" stroke-width="2.6" marker-end="url(#arr-out)"/>
+  <rect x="862" y="550" width="86" height="22" rx="11" fill="#E9EAFC"/>
+  <text x="905" y="565" text-anchor="middle" class="font arrow-lbl-out">5. Send SMS</text>
+
+  <!-- Outbound 6: Telco -> Keypad -->
+  <line x1="514" y1="582" x2="418" y2="582" stroke="#5E69DC" stroke-width="2.6" marker-end="url(#arr-out)"/>
+  <rect x="418" y="550" width="90" height="22" rx="11" fill="#E9EAFC"/>
+  <text x="463" y="565" text-anchor="middle" class="font arrow-lbl-out">6. Deliver SMS</text>
+
+  <!-- Inbound A: Keypad -> Telco -->
+  <line x1="412" y1="666" x2="508" y2="666" stroke="#D98A00" stroke-width="2.6" marker-end="url(#arr-in)"/>
+  <rect x="418" y="676" width="90" height="22" rx="11" fill="#FFF3D1"/>
+  <text x="463" y="691" text-anchor="middle" class="font arrow-lbl-in">A. SMS Reply</text>
+
+  <!-- Inbound B: Telco -> Gateway -->
+  <line x1="854" y1="666" x2="950" y2="666" stroke="#D98A00" stroke-width="2.6" marker-end="url(#arr-in)"/>
+  <rect x="859" y="676" width="92" height="22" rx="11" fill="#FFF3D1"/>
+  <text x="905" y="691" text-anchor="middle" class="font arrow-lbl-in">B. SMS + DLR</text>
+
+  <!-- ==================== FOOTER: MESSAGE FSM + RELIABILITY ==================== -->
+  <!-- Left Card: Message Lifecycle State Machine -->
+  <rect x="36" y="776" width="854" height="114" rx="16" fill="#F8F7FB" stroke="#E5E2EF" stroke-width="1.2"/>
+  <text x="56" y="800" class="font fsm-title">Outbound Message Finite State Machine (FSM): Zero Duplicate SMS Rule</text>
+
+  <!-- FSM Pills -->
+  <rect x="56" y="814" width="110" height="34" rx="10" fill="#FFF3D1" stroke="#E8B93C" stroke-width="1.4"/>
+  <text x="111" y="835" text-anchor="middle" class="font fsm-node" fill="#7F4F00">1. QUEUED</text>
+
+  <line x1="166" y1="831" x2="196" y2="831" stroke="#6E6982" stroke-width="1.8" marker-end="url(#arr-slate)"/>
+
+  <rect x="202" y="814" width="112" height="34" rx="10" fill="#E9EAFC" stroke="#5E69DC" stroke-width="1.4"/>
+  <text x="258" y="835" text-anchor="middle" class="font fsm-node" fill="#3D46B8">2. SENT</text>
+
+  <line x1="314" y1="831" x2="344" y2="831" stroke="#6E6982" stroke-width="1.8" marker-end="url(#arr-slate)"/>
+
+  <rect x="350" y="814" width="136" height="34" rx="10" fill="#FFF3D1" stroke="#E8B93C" stroke-width="1.4"/>
+  <text x="418" y="835" text-anchor="middle" class="font fsm-node" fill="#7F4F00">3. PENDING (&gt;10s)</text>
+
+  <line x1="486" y1="831" x2="516" y2="831" stroke="#6E6982" stroke-width="1.8" marker-end="url(#arr-slate)"/>
+
+  <rect x="522" y="814" width="136" height="34" rx="10" fill="#E1F5EC" stroke="#1D9468" stroke-width="1.4"/>
+  <text x="590" y="835" text-anchor="middle" class="font fsm-node" fill="#116647">4. DELIVERED</text>
+
+  <line x1="673" y1="812" x2="673" y2="850" stroke="#D9D5E6" stroke-width="1.4" stroke-dasharray="3 3"/>
+
+  <rect x="688" y="814" width="184" height="34" rx="10" fill="#FDECEF" stroke="#E86874" stroke-width="1.4"/>
+  <text x="780" y="835" text-anchor="middle" class="font fsm-node" fill="#A32634">5. FAILED (from QUEUED)</text>
+
+  <text x="56" y="874" class="font fsm-note">Transient send errors retry with exponential backoff (10s -&gt; 20s -&gt; 40s -&gt; 60s) before FAILED. Missing DLR stays PENDING (never auto-resent).</text>
+
+  <!-- Right Card: Handoff & Offline Guarantee -->
+  <rect x="910" y="776" width="454" height="114" rx="16" fill="#F2FBF7" stroke="#BCEAD6" stroke-width="1.2"/>
+  <text x="930" y="800" class="font fsm-title" fill="#116647">Wi-Fi &lt;-&gt; 4G Handoff &amp; Offline Recovery</text>
+  <text x="930" y="824" class="font fsm-note">1. IP changes on handoff (replaces Mobile IP at app layer).</text>
+  <text x="930" y="844" class="font fsm-note">2. NetworkCallback triggers WorkManager Firestore catch-up.</text>
+  <text x="930" y="864" class="font fsm-note">3. Room queue + UUIDv4 / SHA-256 IDs ensure 0 lost, 0 duplicates.</text>
+  <text x="930" y="882" class="font arrow-lbl-sync">Evaluation Target: Resume within 60s | Battery &lt;= 15% / 8 hrs</text>
+</svg>
