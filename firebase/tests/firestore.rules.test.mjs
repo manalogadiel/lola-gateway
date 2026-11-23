@@ -60,13 +60,14 @@ function makeFamilyDoc(overrides = {}) {
   };
 }
 
-function makeMemberDoc(role, displayName, smsNickname) {
+function makeMemberDoc(role, displayName, smsNickname, joinCode) {
   return {
     displayName,
     smsNickname,
     role,
     joinedAt: timestampAt(),
     lastActiveAt: timestampAt(),
+    ...(joinCode !== undefined ? { joinCode } : {}),
   };
 }
 
@@ -206,7 +207,7 @@ describe("joinCodes/{joinCode}", () => {
     await assertFails(getDocs(collection(db, "joinCodes")));
   });
 
-  it("allows the gateway host to create a family and matching join code in a batch", async () => {
+  it("allows the gateway host (Android createFamily shape) to create a family, joinCode, and 5-field GATEWAY member without joinCode", async () => {
     const newHostUid = "uid-new-host";
     const newFamilyId = "fam-new";
     const newCode = "LOLA-9911";
@@ -226,7 +227,7 @@ describe("joinCodes/{joinCode}", () => {
     batch.set(doc(db, "joinCodes", newCode), { familyId: newFamilyId });
     batch.set(
       doc(db, "families", newFamilyId, "members", newHostUid),
-      makeMemberDoc("GATEWAY", "New Host", "Host")
+      makeMemberDoc("GATEWAY", "New Host", "")
     );
 
     await assertSucceeds(batch.commit());
@@ -319,7 +320,7 @@ describe("families/{familyId}", () => {
 });
 
 describe("families/{familyId}/members/{uid}", () => {
-  it("allows a new relative to join as MEMBER (including empty optional nickname) and update own profile", async () => {
+  it("allows a new relative to join as MEMBER with the matching joinCode (including empty optional nickname) and update own profile", async () => {
     const db = testEnv.authenticatedContext(OTHER_MEMBER_UID).firestore();
     const memberRef = doc(
       db,
@@ -330,13 +331,66 @@ describe("families/{familyId}/members/{uid}", () => {
     );
 
     await assertSucceeds(
-      setDoc(memberRef, makeMemberDoc("MEMBER", "Tita Marites", ""))
+      setDoc(
+        memberRef,
+        makeMemberDoc("MEMBER", "Tita Marites", "", JOIN_CODE)
+      )
     );
     await assertSucceeds(
       updateDoc(memberRef, {
         smsNickname: "Tita M",
         lastActiveAt: timestampAt(1_200_000),
       })
+    );
+    await assertFails(
+      updateDoc(memberRef, {
+        joinCode: "TAMPER-1",
+      })
+    );
+  });
+
+  it("denies self-enrollment without joinCode or with a wrong joinCode even if familyId is known", async () => {
+    const db = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
+    const outsiderRef = doc(db, "families", FAMILY_ID, "members", OUTSIDER_UID);
+
+    await assertFails(
+      setDoc(outsiderRef, makeMemberDoc("MEMBER", "Random Outsider", "Rand"))
+    );
+    await assertFails(
+      setDoc(
+        outsiderRef,
+        makeMemberDoc("MEMBER", "Random Outsider", "Rand", "WRONG-999")
+      )
+    );
+    await assertFails(
+      setDoc(
+        outsiderRef,
+        makeMemberDoc("MEMBER", "Random Outsider", "Rand", "")
+      )
+    );
+  });
+
+  it("allows an existing pre-fix member without joinCode on their member doc to continue using the app", async () => {
+    const db = testEnv.authenticatedContext(MEMBER_UID).firestore();
+    const memberRef = doc(db, "families", FAMILY_ID, "members", MEMBER_UID);
+
+    const familySnap = await assertSucceeds(
+      getDoc(doc(db, "families", FAMILY_ID))
+    );
+    assert.equal(familySnap.data().joinCode, JOIN_CODE);
+
+    await assertSucceeds(
+      updateDoc(memberRef, {
+        smsNickname: "Basty",
+        lastActiveAt: timestampAt(1_500_000),
+      })
+    );
+
+    await assertSucceeds(
+      setDoc(
+        doc(db, "families", FAMILY_ID, "messages", "msg-existing-member"),
+        makeOutboundMessage(MEMBER_UID)
+      )
     );
   });
 
@@ -346,7 +400,7 @@ describe("families/{familyId}/members/{uid}", () => {
     await assertFails(
       setDoc(
         doc(db, "families", FAMILY_ID, "members", OTHER_MEMBER_UID),
-        makeMemberDoc("GATEWAY", "Tita Marites", "Marites")
+        makeMemberDoc("GATEWAY", "Tita Marites", "Marites", JOIN_CODE)
       )
     );
     await assertFails(

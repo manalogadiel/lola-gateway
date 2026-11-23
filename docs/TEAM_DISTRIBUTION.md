@@ -29,7 +29,7 @@ Both apps build against this exact contract so Android and Web work together imm
 ### Firestore Paths
 - `joinCodes/{joinCode}` -> `{ familyId }`
 - `families/{familyId}` -> `{ name, joinCode, seniorName, seniorPhoneE164, allowListE164, gateway: { uid, deviceId, fcmToken, status, networkType, carrierName, signalDbm, batteryPercent, isCharging, lastHeartbeatAt } }`
-- `families/{familyId}/members/{uid}` -> `{ displayName, smsNickname, role, lastActiveAt, joinedAt }`
+- `families/{familyId}/members/{uid}` -> `{ displayName, smsNickname, role, lastActiveAt, joinedAt, joinCode? }` (`joinCode` required when creating a `MEMBER` doc and must match `families/{familyId}.joinCode`; omitted on `GATEWAY` docs)
 - `families/{familyId}/messages/{messageId}` -> `{ direction, senderUid, senderName, text, smsFormattedText, encoding, segmentCount, status, retryCount, errorCode, errorReason, retryOfMessageId, createdAt, queuedOnGatewayAt, sentAt, deliveredAt, statusUpdatedAt, gatewayNetworkAtSend }`
 
 ### Exact Enum Values (Case-Sensitive)

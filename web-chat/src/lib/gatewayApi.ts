@@ -4,6 +4,7 @@ import type {
   ChatMessageDoc,
   FamilyMemberDoc,
   GatewayHealth,
+  MemberCreateWrite,
   OutboundMessageWrite,
   SenderContext,
 } from "./types";
@@ -26,7 +27,7 @@ export interface GatewayStore {
   createMember(
     familyId: string,
     uid: string,
-    data: { displayName: string; smsNickname: string }
+    data: MemberCreateWrite
   ): Promise<void>;
   updateMemberProfile(
     familyId: string,
@@ -247,6 +248,7 @@ export async function joinFamilyByCode(
     await deps.store.createMember(familyId, user.uid, {
       displayName: user.displayName || "Family Member",
       smsNickname: trimmedNickname || deriveDefaultNickname(user.displayName),
+      joinCode: code,
     });
   }
 

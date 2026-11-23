@@ -70,6 +70,12 @@ export interface ChatMessageDoc {
   gatewayNetworkAtSend: "WIFI" | "CELLULAR" | null;
 }
 
+export interface MemberCreateWrite {
+  displayName: string;
+  smsNickname: string;
+  joinCode: string;
+}
+
 export interface SenderContext {
   familyId: string;
   senderUid: string;

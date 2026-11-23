@@ -85,6 +85,10 @@ service cloud.firestore {
         && gw.lastHeartbeatAt is timestamp;
     }
 
+    function isValidJoinCode(val) {
+      return val is string && val.matches('^[A-Z0-9-]{6,12}$');
+    }
+
     function validFamilyData(data) {
       return data.keys().hasOnly([
           'name',
@@ -95,7 +99,7 @@ service cloud.firestore {
           'gateway'
         ])
         && isNonEmptyString(data.name)
-        && isNonEmptyString(data.joinCode)
+        && isValidJoinCode(data.joinCode)
         && isNonEmptyString(data.seniorName)
         && isNonEmptyString(data.seniorPhoneE164)
         && data.allowListE164 is list
@@ -106,6 +110,26 @@ service cloud.firestore {
       return isNonEmptyString(data.displayName)
         && data.smsNickname is string
         && data.lastActiveAt is timestamp;
+    }
+
+    function validMemberCreate(familyId, data) {
+      let baseKeys = ['displayName', 'smsNickname', 'role', 'lastActiveAt', 'joinedAt'];
+      return validMemberProfile(data)
+        && data.joinedAt is timestamp
+        && (
+          (
+            data.role == 'MEMBER'
+            && data.keys().hasOnly(baseKeys.concat(['joinCode']))
+            && familyExists(familyId)
+            && isValidJoinCode(data.joinCode)
+            && familyDoc(familyId).data.joinCode == data.joinCode
+          )
+          || (
+            data.role == 'GATEWAY'
+            && data.keys().hasOnly(baseKeys)
+            && isFamilyGatewayAfter(familyId)
+          )
+        );
     }
 
     function hasOnlyMessageKeys(data) {
@@ -263,13 +287,7 @@ service cloud.firestore {
         allow list: if isFamilyParticipant(familyId);
         allow create: if isSignedIn()
           && request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(['displayName', 'smsNickname', 'role', 'lastActiveAt', 'joinedAt'])
-          && validMemberProfile(request.resource.data)
-          && request.resource.data.joinedAt is timestamp
-          && (
-            (request.resource.data.role == 'MEMBER' && familyExists(familyId))
-            || (request.resource.data.role == 'GATEWAY' && isFamilyGatewayAfter(familyId))
-          );
+          && validMemberCreate(familyId, request.resource.data);
         allow update: if isSignedIn()
           && request.auth.uid == uid
           && request.resource.data.role == resource.data.role

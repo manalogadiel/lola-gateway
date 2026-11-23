@@ -37,6 +37,7 @@ import type {
   GatewayHealth,
   GatewayNetworkType,
   GatewayStatus,
+  MemberCreateWrite,
   MemberRole,
   MessageDirection,
   MessageStatus,
@@ -230,12 +231,13 @@ export function createFirestoreGatewayStore(db: Firestore): GatewayStore {
     async createMember(
       familyId: string,
       uid: string,
-      data: { displayName: string; smsNickname: string }
+      data: MemberCreateWrite
     ): Promise<void> {
       await setDoc(doc(db, "families", familyId, "members", uid), {
         displayName: data.displayName,
         smsNickname: data.smsNickname,
         role: "MEMBER",
+        joinCode: data.joinCode,
         joinedAt: serverTimestamp(),
         lastActiveAt: serverTimestamp(),
       });
