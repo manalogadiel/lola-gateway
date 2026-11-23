@@ -34,7 +34,8 @@ const MEMBER_UID = "uid-member-seb";
 const OTHER_MEMBER_UID = "uid-member-marites";
 const OUTSIDER_UID = "uid-outsider";
 
-const now = () => Timestamp.fromMillis(1795300000000);
+const BASE_EPOCH_MS = 1795300000000;
+const timestampAt = (offsetMs = 0) => Timestamp.fromMillis(BASE_EPOCH_MS + offsetMs);
 
 function makeFamilyDoc(overrides = {}) {
   return {
@@ -53,19 +54,19 @@ function makeFamilyDoc(overrides = {}) {
       signalDbm: -78,
       batteryPercent: 94,
       isCharging: false,
-      lastHeartbeatAt: now(),
+      lastHeartbeatAt: timestampAt(),
     },
     ...overrides,
   };
 }
 
-function makeMemberDoc(uid, role, displayName, smsNickname) {
+function makeMemberDoc(role, displayName, smsNickname) {
   return {
     displayName,
     smsNickname,
     role,
-    joinedAt: now(),
-    lastActiveAt: now(),
+    joinedAt: timestampAt(),
+    lastActiveAt: timestampAt(),
   };
 }
 
@@ -83,11 +84,11 @@ function makeOutboundMessage(senderUid, overrides = {}) {
     errorCode: null,
     errorReason: null,
     retryOfMessageId: null,
-    createdAt: now(),
+    createdAt: timestampAt(),
     queuedOnGatewayAt: null,
     sentAt: null,
     deliveredAt: null,
-    statusUpdatedAt: now(),
+    statusUpdatedAt: timestampAt(),
     gatewayNetworkAtSend: null,
     ...overrides,
   };
@@ -107,11 +108,11 @@ function makeInboundMessage(overrides = {}) {
     errorCode: null,
     errorReason: null,
     retryOfMessageId: null,
-    createdAt: now(),
-    queuedOnGatewayAt: now(),
-    sentAt: now(),
-    deliveredAt: now(),
-    statusUpdatedAt: now(),
+    createdAt: timestampAt(),
+    queuedOnGatewayAt: timestampAt(),
+    sentAt: timestampAt(),
+    deliveredAt: timestampAt(),
+    statusUpdatedAt: timestampAt(),
     gatewayNetworkAtSend: "WIFI",
     ...overrides,
   };
@@ -145,11 +146,11 @@ beforeEach(async () => {
     await setDoc(doc(db, "families", FAMILY_ID), makeFamilyDoc());
     await setDoc(
       doc(db, "families", FAMILY_ID, "members", GATEWAY_UID),
-      makeMemberDoc(GATEWAY_UID, "GATEWAY", "Gadiel Manalo", "Gadiel")
+      makeMemberDoc("GATEWAY", "Gadiel Manalo", "Gadiel")
     );
     await setDoc(
       doc(db, "families", FAMILY_ID, "members", MEMBER_UID),
-      makeMemberDoc(MEMBER_UID, "MEMBER", "Sebastian Bueno", "Seb")
+      makeMemberDoc("MEMBER", "Sebastian Bueno", "Seb")
     );
     await setDoc(
       doc(db, "families", FAMILY_ID, "messages", "msg-queued-1"),
@@ -205,7 +206,7 @@ describe("joinCodes/{joinCode}", () => {
     await assertFails(getDocs(collection(db, "joinCodes")));
   });
 
-  it("allows the gateway host to create a family and its join code in a batch", async () => {
+  it("allows the gateway host to create a family and matching join code in a batch", async () => {
     const newHostUid = "uid-new-host";
     const newFamilyId = "fam-new";
     const newCode = "LOLA-9911";
@@ -225,19 +226,27 @@ describe("joinCodes/{joinCode}", () => {
     batch.set(doc(db, "joinCodes", newCode), { familyId: newFamilyId });
     batch.set(
       doc(db, "families", newFamilyId, "members", newHostUid),
-      makeMemberDoc(newHostUid, "GATEWAY", "New Host", "Host")
+      makeMemberDoc("GATEWAY", "New Host", "Host")
     );
 
     await assertSucceeds(batch.commit());
   });
 
-  it("denies a non-gateway user from creating or updating a join code", async () => {
-    const db = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
+  it("denies mismatched join code creation, unauthorized creation, updates, and deletes", async () => {
+    const gatewayDb = testEnv.authenticatedContext(GATEWAY_UID).firestore();
     await assertFails(
-      setDoc(doc(db, "joinCodes", "SPOOF-123"), { familyId: FAMILY_ID })
+      setDoc(doc(gatewayDb, "joinCodes", "WRONG-999"), { familyId: FAMILY_ID })
+    );
+    await assertFails(deleteDoc(doc(gatewayDb, "joinCodes", JOIN_CODE)));
+
+    const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
+    await assertFails(
+      setDoc(doc(outsiderDb, "joinCodes", "SPOOF-123"), { familyId: FAMILY_ID })
     );
     await assertFails(
-      updateDoc(doc(db, "joinCodes", JOIN_CODE), { familyId: "other-fam" })
+      updateDoc(doc(outsiderDb, "joinCodes", JOIN_CODE), {
+        familyId: "other-fam",
+      })
     );
   });
 });
@@ -279,12 +288,12 @@ describe("families/{familyId}", () => {
         "gateway.status": "PAUSED",
         "gateway.networkType": "CELLULAR",
         "gateway.batteryPercent": 88,
-        "gateway.lastHeartbeatAt": Timestamp.fromMillis(1795300900000),
+        "gateway.lastHeartbeatAt": timestampAt(900_000),
       })
     );
   });
 
-  it("denies the gateway UID from setting invalid gateway enums or reassigning gateway.uid", async () => {
+  it("denies invalid gateway enums, gateway.uid reassignment, or joinCode mutation", async () => {
     const db = testEnv.authenticatedContext(GATEWAY_UID).firestore();
     await assertFails(
       updateDoc(doc(db, "families", FAMILY_ID), {
@@ -301,11 +310,16 @@ describe("families/{familyId}", () => {
         "gateway.uid": MEMBER_UID,
       })
     );
+    await assertFails(
+      updateDoc(doc(db, "families", FAMILY_ID), {
+        joinCode: "LOLA-0000",
+      })
+    );
   });
 });
 
 describe("families/{familyId}/members/{uid}", () => {
-  it("allows a new relative to join as MEMBER and update their own nickname and lastActiveAt", async () => {
+  it("allows a new relative to join as MEMBER (including empty optional nickname) and update own profile", async () => {
     const db = testEnv.authenticatedContext(OTHER_MEMBER_UID).firestore();
     const memberRef = doc(
       db,
@@ -316,15 +330,12 @@ describe("families/{familyId}/members/{uid}", () => {
     );
 
     await assertSucceeds(
-      setDoc(
-        memberRef,
-        makeMemberDoc(OTHER_MEMBER_UID, "MEMBER", "Tita Marites", "Marites")
-      )
+      setDoc(memberRef, makeMemberDoc("MEMBER", "Tita Marites", ""))
     );
     await assertSucceeds(
       updateDoc(memberRef, {
         smsNickname: "Tita M",
-        lastActiveAt: Timestamp.fromMillis(1795301200000),
+        lastActiveAt: timestampAt(1_200_000),
       })
     );
   });
@@ -335,7 +346,7 @@ describe("families/{familyId}/members/{uid}", () => {
     await assertFails(
       setDoc(
         doc(db, "families", FAMILY_ID, "members", OTHER_MEMBER_UID),
-        makeMemberDoc(OTHER_MEMBER_UID, "GATEWAY", "Tita Marites", "Marites")
+        makeMemberDoc("GATEWAY", "Tita Marites", "Marites")
       )
     );
     await assertFails(
@@ -367,7 +378,7 @@ describe("families/{familyId}/members/{uid}", () => {
 });
 
 describe("families/{familyId}/messages/{messageId}", () => {
-  it("allows a family member to read messages and create a QUEUED OUTBOUND message (including retries)", async () => {
+  it("allows a family member to read messages and create a QUEUED OUTBOUND message (including retries of FAILED)", async () => {
     const db = testEnv.authenticatedContext(MEMBER_UID).firestore();
 
     const stream = await assertSucceeds(
@@ -395,9 +406,15 @@ describe("families/{familyId}/messages/{messageId}", () => {
     );
   });
 
-  it("denies a family member from spoofing senderUid, forging status, creating INBOUND, or updating/deleting messages", async () => {
+  it("denies retrying a non-FAILED message, spoofing senderUid, forging status, creating INBOUND, or updating/deleting", async () => {
     const db = testEnv.authenticatedContext(MEMBER_UID).firestore();
 
+    await assertFails(
+      setDoc(
+        doc(db, "families", FAMILY_ID, "messages", "bad-retry-ref"),
+        makeOutboundMessage(MEMBER_UID, { retryOfMessageId: "msg-queued-1" })
+      )
+    );
     await assertFails(
       setDoc(
         doc(db, "families", FAMILY_ID, "messages", "spoof-sender"),
@@ -439,7 +456,7 @@ describe("families/{familyId}/messages/{messageId}", () => {
     );
   });
 
-  it("allows the gateway UID to query QUEUED outbound catch-up, advance delivery statuses, and create/merge INBOUND messages", async () => {
+  it("allows the gateway UID to query QUEUED catch-up, advance statuses, sync offline host sends, and create/merge INBOUND", async () => {
     const db = testEnv.authenticatedContext(GATEWAY_UID).firestore();
 
     const catchUp = await assertSucceeds(
@@ -458,24 +475,41 @@ describe("families/{familyId}/messages/{messageId}", () => {
     await assertSucceeds(
       updateDoc(msgRef, {
         status: "SENT",
-        queuedOnGatewayAt: now(),
-        sentAt: now(),
-        statusUpdatedAt: now(),
+        queuedOnGatewayAt: timestampAt(),
+        sentAt: timestampAt(),
+        statusUpdatedAt: timestampAt(),
         gatewayNetworkAtSend: "WIFI",
       })
     );
     await assertSucceeds(
       updateDoc(msgRef, {
         status: "PENDING",
-        statusUpdatedAt: Timestamp.fromMillis(1795300010000),
+        statusUpdatedAt: timestampAt(10_000),
       })
     );
     await assertSucceeds(
       updateDoc(msgRef, {
         status: "DELIVERED",
-        deliveredAt: Timestamp.fromMillis(1795300015000),
-        statusUpdatedAt: Timestamp.fromMillis(1795300015000),
+        deliveredAt: timestampAt(15_000),
+        statusUpdatedAt: timestampAt(15_000),
       })
+    );
+
+    await assertSucceeds(
+      setDoc(
+        doc(db, "families", FAMILY_ID, "messages", "host-offline-send"),
+        makeOutboundMessage(GATEWAY_UID, {
+          senderName: "Gadiel",
+          smsFormattedText: "Gadiel: Pauwi na po ako",
+          text: "Pauwi na po ako",
+          status: "DELIVERED",
+          queuedOnGatewayAt: timestampAt(),
+          sentAt: timestampAt(2_000),
+          deliveredAt: timestampAt(5_000),
+          statusUpdatedAt: timestampAt(5_000),
+          gatewayNetworkAtSend: "CELLULAR",
+        })
+      )
     );
 
     const inboundRef = doc(db, "families", FAMILY_ID, "messages", "in_def456");
@@ -484,20 +518,48 @@ describe("families/{familyId}/messages/{messageId}", () => {
     await assertSucceeds(setDoc(inboundRef, inboundPayload, { merge: true }));
   });
 
-  it("denies the gateway UID from tampering with immutable message text or writing invalid status enums", async () => {
+  it("denies tampering with immutable text, invalid status/errorCode enums, or regressing message status", async () => {
     const db = testEnv.authenticatedContext(GATEWAY_UID).firestore();
     const msgRef = doc(db, "families", FAMILY_ID, "messages", "msg-queued-1");
 
     await assertFails(
       updateDoc(msgRef, {
         text: "Tampered body",
-        statusUpdatedAt: now(),
+        statusUpdatedAt: timestampAt(),
       })
     );
     await assertFails(
       updateDoc(msgRef, {
         status: "UNKNOWN_STATUS",
-        statusUpdatedAt: now(),
+        statusUpdatedAt: timestampAt(),
+      })
+    );
+    await assertFails(
+      updateDoc(msgRef, {
+        status: "FAILED",
+        errorCode: "SOME_FAKE_ERROR",
+        statusUpdatedAt: timestampAt(),
+      })
+    );
+
+    await assertSucceeds(
+      updateDoc(msgRef, {
+        status: "SENT",
+        sentAt: timestampAt(1_000),
+        statusUpdatedAt: timestampAt(1_000),
+      })
+    );
+    await assertFails(
+      updateDoc(msgRef, {
+        status: "QUEUED",
+        statusUpdatedAt: timestampAt(2_000),
+      })
+    );
+
+    await assertFails(
+      updateDoc(doc(db, "families", FAMILY_ID, "messages", "in_abc123"), {
+        status: "FAILED",
+        statusUpdatedAt: timestampAt(3_000),
       })
     );
     await assertFails(deleteDoc(msgRef));
