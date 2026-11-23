@@ -60,13 +60,14 @@ function makeFamilyDoc(overrides = {}) {
   };
 }
 
-function makeMemberDoc(role, displayName, smsNickname) {
+function makeMemberDoc(role, displayName, smsNickname, joinCode) {
   return {
     displayName,
     smsNickname,
     role,
     joinedAt: timestampAt(),
     lastActiveAt: timestampAt(),
+    ...(joinCode !== undefined ? { joinCode } : {}),
   };
 }
 
@@ -319,7 +320,7 @@ describe("families/{familyId}", () => {
 });
 
 describe("families/{familyId}/members/{uid}", () => {
-  it("allows a new relative to join as MEMBER (including empty optional nickname) and update own profile", async () => {
+  it("allows a new relative to join as MEMBER with the matching joinCode (including empty optional nickname) and update own profile", async () => {
     const db = testEnv.authenticatedContext(OTHER_MEMBER_UID).firestore();
     const memberRef = doc(
       db,
@@ -330,13 +331,42 @@ describe("families/{familyId}/members/{uid}", () => {
     );
 
     await assertSucceeds(
-      setDoc(memberRef, makeMemberDoc("MEMBER", "Tita Marites", ""))
+      setDoc(
+        memberRef,
+        makeMemberDoc("MEMBER", "Tita Marites", "", JOIN_CODE)
+      )
     );
     await assertSucceeds(
       updateDoc(memberRef, {
         smsNickname: "Tita M",
         lastActiveAt: timestampAt(1_200_000),
       })
+    );
+    await assertFails(
+      updateDoc(memberRef, {
+        joinCode: "TAMPER-1",
+      })
+    );
+  });
+
+  it("denies self-enrollment without joinCode or with a wrong joinCode even if familyId is known", async () => {
+    const db = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
+    const outsiderRef = doc(db, "families", FAMILY_ID, "members", OUTSIDER_UID);
+
+    await assertFails(
+      setDoc(outsiderRef, makeMemberDoc("MEMBER", "Random Outsider", "Rand"))
+    );
+    await assertFails(
+      setDoc(
+        outsiderRef,
+        makeMemberDoc("MEMBER", "Random Outsider", "Rand", "WRONG-999")
+      )
+    );
+    await assertFails(
+      setDoc(
+        outsiderRef,
+        makeMemberDoc("MEMBER", "Random Outsider", "Rand", "")
+      )
     );
   });
 
@@ -346,7 +376,7 @@ describe("families/{familyId}/members/{uid}", () => {
     await assertFails(
       setDoc(
         doc(db, "families", FAMILY_ID, "members", OTHER_MEMBER_UID),
-        makeMemberDoc("GATEWAY", "Tita Marites", "Marites")
+        makeMemberDoc("GATEWAY", "Tita Marites", "Marites", JOIN_CODE)
       )
     );
     await assertFails(

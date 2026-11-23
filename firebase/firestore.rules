@@ -263,12 +263,21 @@ service cloud.firestore {
         allow list: if isFamilyParticipant(familyId);
         allow create: if isSignedIn()
           && request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(['displayName', 'smsNickname', 'role', 'lastActiveAt', 'joinedAt'])
           && validMemberProfile(request.resource.data)
           && request.resource.data.joinedAt is timestamp
           && (
-            (request.resource.data.role == 'MEMBER' && familyExists(familyId))
-            || (request.resource.data.role == 'GATEWAY' && isFamilyGatewayAfter(familyId))
+            (
+              request.resource.data.role == 'MEMBER'
+              && request.resource.data.keys().hasOnly(['displayName', 'smsNickname', 'role', 'lastActiveAt', 'joinedAt', 'joinCode'])
+              && familyExists(familyId)
+              && isNonEmptyString(request.resource.data.joinCode)
+              && familyDoc(familyId).data.joinCode == request.resource.data.joinCode
+            )
+            || (
+              request.resource.data.role == 'GATEWAY'
+              && request.resource.data.keys().hasOnly(['displayName', 'smsNickname', 'role', 'lastActiveAt', 'joinedAt'])
+              && isFamilyGatewayAfter(familyId)
+            )
           );
         allow update: if isSignedIn()
           && request.auth.uid == uid

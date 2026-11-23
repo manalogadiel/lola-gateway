@@ -34,6 +34,7 @@ function makeFakeDeps(options?: {
     uid: string;
     displayName: string;
     smsNickname: string;
+    joinCode: string;
   }> = [];
   const updatedMembers: Array<{
     familyId: string;
@@ -338,6 +339,7 @@ describe("joinFamilyByCode and maskPhoneE164", () => {
         uid: "uid-seb",
         displayName: "Sebastian Bueno",
         smsNickname: "Sebastian",
+        joinCode: "LOLA-4821",
       },
     ]);
   });
