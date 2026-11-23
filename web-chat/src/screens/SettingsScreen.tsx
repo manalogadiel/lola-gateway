@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { IconBottomDock, type MainTab } from "../components/IconBottomDock";
+import type { MainTab } from "../components/IconBottomDock";
 import { StatusDot } from "../components/StatusDot";
 import {
   formatTimeShort,
@@ -28,7 +28,7 @@ interface SettingsScreenProps {
   onChangeTheme: (pref: ThemePreference) => void;
   onUpdateNickname: (nickname: string) => Promise<void>;
   onSignOut: () => Promise<void>;
-  onSelectTab: (tab: MainTab) => void;
+  onSelectTab?: (tab: MainTab) => void;
   onOpenChat: () => void;
 }
 
@@ -42,8 +42,6 @@ export function SettingsScreen({
   onChangeTheme,
   onUpdateNickname,
   onSignOut,
-  onSelectTab,
-  onOpenChat,
 }: SettingsScreenProps) {
   const displayName = currentMember?.displayName || fallbackDisplayName;
   const currentNickname = currentMember
@@ -103,7 +101,10 @@ export function SettingsScreen({
     <>
       <header className="top-chrome">
         <div className="nav-bar">
-          <h1 className="app-h1">Settings</h1>
+          <div>
+            <span className="brand-eyebrow">PREFERENCES</span>
+            <h1 className="app-h1">Settings</h1>
+          </div>
         </div>
       </header>
 
@@ -274,12 +275,6 @@ export function SettingsScreen({
           Sign Out
         </button>
       </main>
-
-      <IconBottomDock
-        activeTab="settings"
-        onSelectTab={onSelectTab}
-        onCompose={onOpenChat}
-      />
     </>
   );
 }

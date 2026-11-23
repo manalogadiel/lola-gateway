@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "firebase/auth";
-import type { MainTab } from "./components/IconBottomDock";
+import { IconBottomDock, type MainTab } from "./components/IconBottomDock";
 import {
   createLiveGatewayApiDeps,
   getFirebaseServices,
@@ -97,6 +97,27 @@ export function App() {
   const [syncingFamily, setSyncingFamily] = useState(false);
 
   const [activeView, setActiveView] = useState<AppView>("home");
+  const [slideDirection, setSlideDirection] = useState<"forward" | "backward" | "push" | "pop">("forward");
+  const prevViewRef = useRef<AppView>("home");
+
+  const handleNavigate = useCallback((nextView: AppView) => {
+    const prevView = prevViewRef.current;
+    if (prevView === nextView) {
+      return;
+    }
+    if (nextView === "chat") {
+      setSlideDirection("push");
+    } else if (prevView === "chat") {
+      setSlideDirection("pop");
+    } else {
+      const tabOrder: Record<string, number> = { home: 0, people: 1, settings: 2 };
+      const prevIdx = tabOrder[prevView] ?? 0;
+      const nextIdx = tabOrder[nextView] ?? 0;
+      setSlideDirection(nextIdx >= prevIdx ? "forward" : "backward");
+    }
+    prevViewRef.current = nextView;
+    setActiveView(nextView);
+  }, []);
   const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -392,7 +413,7 @@ export function App() {
         senderSmsNickname={senderSmsNickname}
         gatewayDisplay={gatewayDisplay}
         qa={qaProps}
-        onBack={() => setActiveView("home")}
+        onBack={() => handleNavigate("home")}
         onSendMessage={handleSendMessage}
         onRetryMessage={handleRetryMessage}
       />
@@ -405,8 +426,8 @@ export function App() {
         currentUid={user.uid}
         gatewayDisplay={gatewayDisplay}
         nowMs={nowMs}
-        onSelectTab={setActiveView}
-        onOpenChat={() => setActiveView("chat")}
+        onSelectTab={handleNavigate}
+        onOpenChat={() => handleNavigate("chat")}
       />
     );
   } else if (activeView === "settings") {
@@ -421,8 +442,8 @@ export function App() {
         onChangeTheme={handleChangeTheme}
         onUpdateNickname={handleUpdateNickname}
         onSignOut={handleSignOut}
-        onSelectTab={setActiveView}
-        onOpenChat={() => setActiveView("chat")}
+        onSelectTab={handleNavigate}
+        onOpenChat={() => handleNavigate("chat")}
       />
     );
   } else {
@@ -433,15 +454,33 @@ export function App() {
         messages={messages}
         gatewayDisplay={gatewayDisplay}
         nowMs={nowMs}
-        onSelectTab={setActiveView}
-        onOpenChat={() => setActiveView("chat")}
+        onSelectTab={handleNavigate}
+        onOpenChat={() => handleNavigate("chat")}
       />
     );
   }
 
+  const showBottomDock =
+    Boolean(user && familyId && family && activeView !== "chat");
+
   return (
     <div className="app-viewport">
-      <div className="app-shell">{screen}</div>
+      <div className="app-shell">
+        <div key={activeView} className={`screen-stage slide-${slideDirection}`}>
+          {screen}
+        </div>
+        {showBottomDock && (
+          <IconBottomDock
+            activeTab={
+              activeView === "home" || activeView === "people" || activeView === "settings"
+                ? activeView
+                : "home"
+            }
+            onSelectTab={handleNavigate}
+            onCompose={() => handleNavigate("chat")}
+          />
+        )}
+      </div>
     </div>
   );
 }

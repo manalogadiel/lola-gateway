@@ -79,13 +79,11 @@ export function ChatScreen({
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const streamRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const el = streamRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [messages.length]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const retriedMessageIds = useMemo(() => {
     const set = new Set<string>();
@@ -166,20 +164,29 @@ export function ChatScreen({
               />
             </div>
           </div>
-          <img
-            className="chat-avatar-sm"
-            src="/assets/lola-avatar.jpg"
-            alt={family.seniorName}
-          />
+          <div className="chat-avatar-wrap">
+            <img
+              className="chat-avatar-sm"
+              src="/assets/lola-avatar.jpg"
+              alt={family.seniorName}
+            />
+            <span className="chat-sms-dot" title="Keypad SMS Active" />
+          </div>
         </div>
       </header>
 
       <div className="chat-stream" ref={streamRef} role="log" aria-live="polite">
         {messages.length === 0 ? (
-          <div className="empty-state" style={{ marginTop: 24 }}>
-            Messages you send here are forwarded to{" "}
-            <strong>{family.seniorName}</strong> as SMS prefixed with{" "}
-            <strong>&ldquo;{senderSmsNickname}:&rdquo;</strong>.
+          <div className="empty-state chat-empty-brand" style={{ marginTop: 24 }}>
+            <img
+              className="empty-lola-av"
+              src="/assets/lola-avatar.jpg"
+              alt={family.seniorName}
+            />
+            <p className="empty-brand-title">Family Chat with {family.seniorName}</p>
+            <p className="empty-brand-text">
+              Messages you send here arrive on {family.seniorName}&rsquo;s keypad phone as SMS with &ldquo;<strong>{senderSmsNickname}:</strong>&rdquo; prefix.
+            </p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -201,9 +208,14 @@ export function ChatScreen({
               <div key={msg.id} className={`msg-group ${groupKind}`}>
                 {!isMe && (
                   <span className="msg-sender">
-                    {isInbound
-                      ? `${family.seniorName} · via SMS`
-                      : msg.senderName}
+                    {isInbound ? (
+                      <span className="lola-sender-tag">
+                        <span>{family.seniorName}</span>
+                        <span className="sms-pill-badge">SMS</span>
+                      </span>
+                    ) : (
+                      msg.senderName
+                    )}
                   </span>
                 )}
                 <div className={`bubble ${bubbleKind}`}>{msg.text}</div>
@@ -243,6 +255,7 @@ export function ChatScreen({
             );
           })
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {qa.enabled && (

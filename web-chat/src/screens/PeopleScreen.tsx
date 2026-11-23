@@ -1,4 +1,4 @@
-import { IconBottomDock, type MainTab } from "../components/IconBottomDock";
+import type { MainTab } from "../components/IconBottomDock";
 import { ChatIcon } from "../components/Icons";
 import { StatusDot } from "../components/StatusDot";
 import {
@@ -19,7 +19,7 @@ interface PeopleScreenProps {
   currentUid: string;
   gatewayDisplay: GatewayDisplayState;
   nowMs: number;
-  onSelectTab: (tab: MainTab) => void;
+  onSelectTab?: (tab: MainTab) => void;
   onOpenChat: () => void;
 }
 
@@ -36,22 +36,41 @@ export function PeopleScreen({
   currentUid,
   gatewayDisplay,
   nowMs,
-  onSelectTab,
   onOpenChat,
 }: PeopleScreenProps) {
   const { copied, copy } = useCopyFeedback();
+
+  const handleInvite = async () => {
+    const inviteText = `Join our family chat with ${family.seniorName} on Lola Gateway! Visit ${window.location.origin} and enter Family Join Code: ${family.joinCode}`;
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: `Join ${family.name} on Lola Gateway`,
+          text: inviteText,
+          url: window.location.origin,
+        });
+        return;
+      } catch {
+        // Fallback to copy if user cancels or share fails
+      }
+    }
+    await copy(inviteText);
+  };
 
   return (
     <>
       <header className="top-chrome">
         <div className="nav-bar">
-          <h1 className="app-h1">People</h1>
+          <div>
+            <span className="brand-eyebrow">FAMILY ROSTER</span>
+            <h1 className="app-h1">People</h1>
+          </div>
           <button
             type="button"
             className="invite-text-btn"
-            onClick={() => copy(family.joinCode)}
+            onClick={handleInvite}
           >
-            {copied ? "Code Copied" : "+ Invite"}
+            {copied ? "Invite Copied" : "+ Invite"}
           </button>
         </div>
       </header>
@@ -107,7 +126,6 @@ export function PeopleScreen({
             } else if (member.uid !== currentUid) {
               parts.push(formatMemberPresence(member.lastActiveMs, nowMs));
             }
-            parts.push(`SMS: "${prefix}"`);
 
             return (
               <div key={member.uid} className="member-row">
@@ -116,8 +134,15 @@ export function PeopleScreen({
                   {active && <span className="member-dot" aria-hidden="true" />}
                 </div>
                 <div className="member-mid">
-                  <div className="member-name">{member.displayName}</div>
-                  <div className="member-role">{parts.join(" · ")}</div>
+                  <div className="member-name-row">
+                    <span className="member-name">{member.displayName}</span>
+                    <span className="member-sms-chip" title="Nickname in Lola's SMS">
+                      {prefix}
+                    </span>
+                  </div>
+                  <div className="member-role">
+                    {parts.length > 0 ? parts.join(" · ") : "Family Member"}
+                  </div>
                 </div>
               </div>
             );
@@ -141,12 +166,6 @@ export function PeopleScreen({
           </button>
         </div>
       </main>
-
-      <IconBottomDock
-        activeTab="people"
-        onSelectTab={onSelectTab}
-        onCompose={onOpenChat}
-      />
     </>
   );
 }

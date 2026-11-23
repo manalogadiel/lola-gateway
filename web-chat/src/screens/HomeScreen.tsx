@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { IconBottomDock, type MainTab } from "../components/IconBottomDock";
+import type { MainTab } from "../components/IconBottomDock";
 import { SearchIcon } from "../components/Icons";
 import { StatusDot } from "../components/StatusDot";
 import {
@@ -23,7 +23,7 @@ interface HomeScreenProps {
   messages: ChatMessageDoc[];
   gatewayDisplay: GatewayDisplayState;
   nowMs: number;
-  onSelectTab: (tab: MainTab) => void;
+  onSelectTab?: (tab: MainTab) => void;
   onOpenChat: () => void;
 }
 
@@ -33,21 +33,12 @@ export function HomeScreen({
   messages,
   gatewayDisplay,
   nowMs,
-  onSelectTab,
   onOpenChat,
 }: HomeScreenProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-  const latestInbound = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      if (messages[i].direction === "INBOUND") {
-        return messages[i];
-      }
-    }
-    return null;
-  }, [messages]);
 
   const filteredMembers = useMemo(() => {
     if (!normalizedQuery) {
@@ -75,20 +66,27 @@ export function HomeScreen({
     family.seniorName.toLowerCase().includes(normalizedQuery) ||
     groupPreviewText.toLowerCase().includes(normalizedQuery);
 
-  const showLolaRow =
-    !normalizedQuery ||
-    family.seniorName.toLowerCase().includes(normalizedQuery) ||
-    "sms".includes(normalizedQuery) ||
-    (latestInbound?.text.toLowerCase().includes(normalizedQuery) ?? false);
-
   const totalPeople = members.length + 1;
 
   return (
     <>
       <header className="top-chrome">
-        <div className="nav-bar">
-          <h1 className="app-h1">Messages</h1>
-          <StatusDot tone={gatewayDisplay.tone} label={gatewayDisplay.label} />
+        <div className="nav-bar brand-nav-bar">
+          <div className="brand-header-left">
+            <div className="brand-mascot-wrap">
+              <img
+                className="brand-mascot-img"
+                src="/assets/lola-avatar.jpg"
+                alt="Lola Gateway"
+              />
+              <span className="brand-online-ping" aria-hidden="true" />
+            </div>
+            <div>
+              <span className="brand-eyebrow">LOLA GATEWAY</span>
+              <h1 className="app-h1">{family.name}</h1>
+            </div>
+          </div>
+          <StatusDot tone={gatewayDisplay.tone} label={gatewayDisplay.label} compact />
         </div>
       </header>
 
@@ -100,14 +98,38 @@ export function HomeScreen({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search people or chats"
-            aria-label="Search people or chats"
+            placeholder="Search family or chats"
+            aria-label="Search family or chats"
           />
         </div>
 
+        {/* Ambient Lola SMS Status Card */}
+        <div
+          className="ambient-banner"
+          onClick={onOpenChat}
+          role="button"
+          tabIndex={0}
+          aria-label={`Open family chat with ${family.seniorName}`}
+        >
+          <div className="ambient-banner-mascot">
+            <img src="/assets/lola-avatar.jpg" alt={family.seniorName} />
+          </div>
+          <div className="ambient-banner-content">
+            <div className="ambient-banner-heading">
+              <span>{family.seniorName}</span>
+              <span className="ambient-status-tag">Keypad SMS</span>
+            </div>
+            <p className="ambient-banner-text">
+              {gatewayDisplay.state === "online"
+                ? `Direct SMS bridge connected · Texts sync with ${family.name}`
+                : gatewayDisplay.label}
+            </p>
+          </div>
+        </div>
+
         <div className="section-row-head">
-          <span className="section-label">People</span>
-          <span className="section-meta tnum">{totalPeople} in family</span>
+          <span className="section-label">Family Circle</span>
+          <span className="section-meta tnum">{totalPeople} members</span>
         </div>
 
         <div className="people-strip">
@@ -120,13 +142,13 @@ export function HomeScreen({
             >
               <span className="avatar-wrap">
                 <img
-                  className="avatar-img"
+                  className="avatar-img lola-ring"
                   src="/assets/lola-avatar.jpg"
                   alt={family.seniorName}
                 />
                 <span
                   className="presence-dot marigold"
-                  title="Keypad SMS"
+                  title="Keypad SMS Active"
                   aria-hidden="true"
                 />
               </span>
@@ -160,7 +182,8 @@ export function HomeScreen({
         </div>
 
         <div className="section-row-head">
-          <span className="section-label">Chats</span>
+          <span className="section-label">Family Chat</span>
+          <span className="section-meta">Live SMS Bridge</span>
         </div>
 
         <div className="chat-list">
@@ -174,13 +197,18 @@ export function HomeScreen({
                 <img
                   className="group-av-main"
                   src="/assets/lola-avatar.jpg"
-                  alt={family.name}
+                  alt={family.seniorName}
                 />
                 <span className="group-av-sub tnum">+{members.length}</span>
               </div>
               <div className="thread-mid">
                 <div className="thread-top">
-                  <span className="thread-title">{family.name}</span>
+                  <div className="thread-title-wrap">
+                    <span className="thread-title">{family.name}</span>
+                    <span className="sms-pill-badge" title="Bridge connected to Lola's phone">
+                      Lola&rsquo;s SMS
+                    </span>
+                  </div>
                   <span className="thread-time tnum">
                     {formatThreadTime(latestMessage?.createdAtMs ?? null, nowMs)}
                   </span>
@@ -192,50 +220,13 @@ export function HomeScreen({
             </button>
           )}
 
-          {showLolaRow && (
-            <button
-              type="button"
-              className="thread-row"
-              onClick={onOpenChat}
-            >
-              <img
-                className="avatar-img"
-                style={{ width: 48, height: 48, flexShrink: 0 }}
-                src="/assets/lola-avatar.jpg"
-                alt={family.seniorName}
-              />
-              <div className="thread-mid">
-                <div className="thread-top">
-                  <span className="thread-title">{family.seniorName}</span>
-                  <span className="thread-time tnum">
-                    {formatThreadTime(latestInbound?.createdAtMs ?? null, nowMs)}
-                  </span>
-                </div>
-                <div className="thread-bottom">
-                  <p className="thread-preview">
-                    {latestInbound
-                      ? latestInbound.text
-                      : "Replies from keypad SMS appear in family chat"}
-                  </p>
-                  <span className="sms-tag-inline">SMS</span>
-                </div>
-              </div>
-            </button>
-          )}
-
-          {!showGroupRow && !showLolaRow && (
+          {!showGroupRow && (
             <div className="empty-state">
               No chats match &ldquo;{searchQuery}&rdquo;.
             </div>
           )}
         </div>
       </main>
-
-      <IconBottomDock
-        activeTab="home"
-        onSelectTab={onSelectTab}
-        onCompose={onOpenChat}
-      />
     </>
   );
 }
