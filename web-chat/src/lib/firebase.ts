@@ -245,7 +245,6 @@ export function createFirestoreGatewayStore(db: Firestore): GatewayStore {
       familyId: string,
       uid: string,
       updates: {
-        displayName?: string;
         smsNickname?: string;
         lastActiveMs: number;
       }
@@ -253,9 +252,6 @@ export function createFirestoreGatewayStore(db: Firestore): GatewayStore {
       const patch: Record<string, unknown> = {
         lastActiveAt: Timestamp.fromMillis(updates.lastActiveMs),
       };
-      if (updates.displayName !== undefined) {
-        patch.displayName = updates.displayName;
-      }
       if (updates.smsNickname !== undefined) {
         patch.smsNickname = updates.smsNickname;
       }
@@ -277,8 +273,8 @@ export function createFirestoreGatewayStore(db: Firestore): GatewayStore {
         segmentCount: payload.segmentCount,
         status: payload.status,
         retryCount: payload.retryCount,
-        errorCode: payload.errorCode,
-        errorReason: payload.errorReason,
+        errorCode: null,
+        errorReason: null,
         retryOfMessageId: payload.retryOfMessageId,
         createdAt: Timestamp.fromMillis(payload.createdAtMs),
         queuedOnGatewayAt: null,

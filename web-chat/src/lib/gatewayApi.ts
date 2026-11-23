@@ -1,14 +1,19 @@
+import { deriveDefaultNickname } from "./formatters";
 import { calculateSmsMetrics } from "./smsCounter";
 import type {
   ChatMessageDoc,
   FamilyMemberDoc,
   GatewayHealth,
   OutboundMessageWrite,
+  SenderContext,
 } from "./types";
 
 export const GATEWAY_STALE_MS = 20 * 60 * 1000;
 
+export type GatewayStateKey = "online" | "cellular_backup" | "paused" | "offline";
+
 export interface GatewayDisplayState {
+  state: GatewayStateKey;
   tone: "mint" | "amber" | "coral";
   label: "Online" | "4G Backup" | "Paused" | "Offline";
   detail: string;
@@ -26,7 +31,7 @@ export interface GatewayStore {
   updateMemberProfile(
     familyId: string,
     uid: string,
-    updates: { displayName?: string; smsNickname?: string; lastActiveMs: number }
+    updates: { smsNickname?: string; lastActiveMs: number }
   ): Promise<void>;
   createOutboundMessage(
     familyId: string,
@@ -61,8 +66,14 @@ export function deriveGatewayDisplayState(
   gateway: GatewayHealth | null | undefined,
   nowMs: number = Date.now()
 ): GatewayDisplayState {
-  if (!gateway) {
+  if (
+    !gateway ||
+    gateway.status === "OFFLINE" ||
+    gateway.networkType === "NONE" ||
+    isGatewayStale(gateway.lastHeartbeatMs, nowMs)
+  ) {
     return {
+      state: "offline",
       tone: "coral",
       label: "Offline",
       detail: "Gateway Offline",
@@ -72,22 +83,10 @@ export function deriveGatewayDisplayState(
 
   if (gateway.status === "PAUSED") {
     return {
+      state: "paused",
       tone: "coral",
       label: "Paused",
       detail: "Paused · messages will queue",
-      reachable: false,
-    };
-  }
-
-  if (
-    gateway.status === "OFFLINE" ||
-    gateway.networkType === "NONE" ||
-    isGatewayStale(gateway.lastHeartbeatMs, nowMs)
-  ) {
-    return {
-      tone: "coral",
-      label: "Offline",
-      detail: "Gateway Offline",
       reachable: false,
     };
   }
@@ -96,6 +95,7 @@ export function deriveGatewayDisplayState(
 
   if (gateway.networkType === "CELLULAR") {
     return {
+      state: "cellular_backup",
       tone: "amber",
       label: "4G Backup",
       detail: `4G LTE${carrierSuffix}`,
@@ -104,6 +104,7 @@ export function deriveGatewayDisplayState(
   }
 
   return {
+    state: "online",
     tone: "mint",
     label: "Online",
     detail: `Wi-Fi${carrierSuffix}`,
@@ -113,23 +114,6 @@ export function deriveGatewayDisplayState(
 
 export function normalizeJoinCode(rawCode: string): string {
   return rawCode.trim().toUpperCase();
-}
-
-export function deriveDefaultNickname(displayName: string): string {
-  const firstWord = displayName.trim().split(/\s+/)[0] ?? "";
-  return (firstWord || "Family").slice(0, 16);
-}
-
-export function maskPhoneE164(phoneE164: string): string {
-  const cleaned = phoneE164.replace(/\s+/g, "");
-  const phMatch = /^\+63(\d{3})\d{3}(\d{4})$/.exec(cleaned);
-  if (phMatch) {
-    return `+63 ${phMatch[1]} *** ${phMatch[2]}`;
-  }
-  if (cleaned.length > 6) {
-    return `${cleaned.slice(0, 4)} *** ${cleaned.slice(-4)}`;
-  }
-  return phoneE164;
 }
 
 export async function notifyWorkerPush(
@@ -157,50 +141,40 @@ export async function notifyWorkerPush(
 }
 
 async function dispatchOutbound(
-  params: {
-    familyId: string;
-    senderUid: string;
-    senderName: string;
-    text: string;
-    retryOfMessageId: string | null;
-  },
+  sender: SenderContext,
+  text: string,
+  retryOfMessageId: string | null,
   deps: GatewayApiDeps
 ): Promise<{ messageId: string; notified: boolean }> {
-  const trimmedText = params.text.trim();
+  const trimmedText = text.trim();
   if (!trimmedText) {
     throw new Error("Message cannot be empty.");
   }
 
   const nowMs = (deps.now ?? Date.now)();
   const messageId = (deps.generateId ?? (() => crypto.randomUUID()))();
-  const metrics = calculateSmsMetrics(params.senderName, trimmedText);
+  const metrics = calculateSmsMetrics(sender.senderName, trimmedText);
 
   const payload: OutboundMessageWrite = {
     direction: "OUTBOUND",
-    senderUid: params.senderUid,
-    senderName: params.senderName,
+    senderUid: sender.senderUid,
+    senderName: sender.senderName,
     text: trimmedText,
     smsFormattedText: metrics.formattedText,
     encoding: metrics.encoding,
     segmentCount: metrics.segmentCount,
     status: "QUEUED",
     retryCount: 0,
-    errorCode: null,
-    errorReason: null,
-    retryOfMessageId: params.retryOfMessageId,
+    retryOfMessageId,
     createdAtMs: nowMs,
-    queuedOnGatewayAtMs: null,
-    sentAtMs: null,
-    deliveredAtMs: null,
     statusUpdatedAtMs: nowMs,
-    gatewayNetworkAtSend: null,
   };
 
-  await deps.store.createOutboundMessage(params.familyId, messageId, payload);
+  await deps.store.createOutboundMessage(sender.familyId, messageId, payload);
 
   // Best-effort member activity refresh; never blocks sending.
   try {
-    await deps.store.updateMemberProfile(params.familyId, params.senderUid, {
+    await deps.store.updateMemberProfile(sender.familyId, sender.senderUid, {
       lastActiveMs: nowMs,
     });
   } catch {
@@ -211,7 +185,7 @@ async function dispatchOutbound(
   try {
     const idToken = await deps.getIdToken();
     if (idToken) {
-      notified = await deps.notifyGateway(params.familyId, messageId, idToken);
+      notified = await deps.notifyGateway(sender.familyId, messageId, idToken);
     }
   } catch {
     // Resilient fallback: QUEUED message is already in Firestore for Gateway catch-up.
@@ -222,38 +196,26 @@ async function dispatchOutbound(
 }
 
 export async function sendOutboundMessage(
-  params: {
-    familyId: string;
-    senderUid: string;
-    senderName: string;
-    text: string;
-  },
+  sender: SenderContext,
+  text: string,
   deps: GatewayApiDeps
 ): Promise<{ messageId: string; notified: boolean }> {
-  return dispatchOutbound({ ...params, retryOfMessageId: null }, deps);
+  return dispatchOutbound(sender, text, null, deps);
 }
 
 export async function retryFailedMessage(
   failedMessage: ChatMessageDoc,
-  params: {
-    familyId: string;
-    senderUid: string;
-    senderName: string;
-  },
+  sender: SenderContext,
   deps: GatewayApiDeps
 ): Promise<{ messageId: string; notified: boolean }> {
   if (failedMessage.status !== "FAILED") {
     throw new Error("Only FAILED messages can be retried.");
   }
+  if (failedMessage.senderUid !== sender.senderUid) {
+    throw new Error("You can only retry your own failed messages.");
+  }
 
-  return dispatchOutbound(
-    {
-      ...params,
-      text: failedMessage.text,
-      retryOfMessageId: failedMessage.id,
-    },
-    deps
-  );
+  return dispatchOutbound(sender, failedMessage.text, failedMessage.id, deps);
 }
 
 export async function joinFamilyByCode(

@@ -70,6 +70,12 @@ export interface ChatMessageDoc {
   gatewayNetworkAtSend: "WIFI" | "CELLULAR" | null;
 }
 
+export interface SenderContext {
+  familyId: string;
+  senderUid: string;
+  senderName: string;
+}
+
 export interface OutboundMessageWrite {
   direction: "OUTBOUND";
   senderUid: string;
@@ -80,13 +86,13 @@ export interface OutboundMessageWrite {
   segmentCount: number;
   status: "QUEUED";
   retryCount: 0;
-  errorCode: null;
-  errorReason: null;
   retryOfMessageId: string | null;
   createdAtMs: number;
-  queuedOnGatewayAtMs: null;
-  sentAtMs: null;
-  deliveredAtMs: null;
   statusUpdatedAtMs: number;
-  gatewayNetworkAtSend: null;
+}
+
+export interface QaProps {
+  enabled: boolean;
+  eventCount: number;
+  onExportCsv: () => void;
 }

@@ -27,6 +27,30 @@ export function formatSmsPayload(senderName: string, body: string): string {
   return cleanName ? `${cleanName}: ${body}` : body;
 }
 
+/**
+ * Counts multipart SMS segments without splitting a 2-unit symbol across a
+ * segment boundary, matching Android's SmsManager.divideMessage() behavior
+ * for GSM-7 extended characters (2 septets) and UCS-2 surrogate pairs (2 code units).
+ */
+function countMultipartSegments(
+  units: readonly number[],
+  multiLimit: number
+): number {
+  let segments = 1;
+  let currentUsed = 0;
+
+  for (const unitSize of units) {
+    if (currentUsed + unitSize > multiLimit) {
+      segments += 1;
+      currentUsed = unitSize;
+    } else {
+      currentUsed += unitSize;
+    }
+  }
+
+  return segments;
+}
+
 export function calculateSmsMetrics(
   senderName: string,
   body: string
@@ -42,32 +66,58 @@ export function calculateSmsMetrics(
   }
 
   const formattedText = formatSmsPayload(senderName, body);
-  let septets = 0;
+  const gsmUnits: number[] = [];
+  let totalSeptets = 0;
   let isGsm7 = true;
 
   for (const ch of formattedText) {
     if (GSM7_BASIC_CHARS.has(ch)) {
-      septets += 1;
+      gsmUnits.push(1);
+      totalSeptets += 1;
     } else if (GSM7_EXTENDED_CHARS.has(ch)) {
-      septets += 2;
+      gsmUnits.push(2);
+      totalSeptets += 2;
     } else {
       isGsm7 = false;
       break;
     }
   }
 
-  const encoding: SmsEncoding = isGsm7 ? "GSM-7" : "UCS-2";
-  const singleLimit = isGsm7 ? GSM7_SINGLE_LIMIT : UCS2_SINGLE_LIMIT;
-  const multiLimit = isGsm7 ? GSM7_MULTI_LIMIT : UCS2_MULTI_LIMIT;
-  const used = isGsm7 ? septets : formattedText.length;
-  const segmentCount = used <= singleLimit ? 1 : Math.ceil(used / multiLimit);
-  const limit = segmentCount === 1 ? singleLimit : segmentCount * multiLimit;
+  if (isGsm7) {
+    const segmentCount =
+      totalSeptets <= GSM7_SINGLE_LIMIT
+        ? 1
+        : countMultipartSegments(gsmUnits, GSM7_MULTI_LIMIT);
+    const limit =
+      segmentCount === 1
+        ? GSM7_SINGLE_LIMIT
+        : segmentCount * GSM7_MULTI_LIMIT;
+    return {
+      formattedText,
+      encoding: "GSM-7",
+      segmentCount,
+      used: totalSeptets,
+      limit,
+    };
+  }
+
+  const ucsUnits: number[] = [];
+  for (const codePoint of formattedText) {
+    ucsUnits.push(codePoint.length);
+  }
+  const totalCodeUnits = formattedText.length;
+  const segmentCount =
+    totalCodeUnits <= UCS2_SINGLE_LIMIT
+      ? 1
+      : countMultipartSegments(ucsUnits, UCS2_MULTI_LIMIT);
+  const limit =
+    segmentCount === 1 ? UCS2_SINGLE_LIMIT : segmentCount * UCS2_MULTI_LIMIT;
 
   return {
     formattedText,
-    encoding,
+    encoding: "UCS-2",
     segmentCount,
-    used,
+    used: totalCodeUnits,
     limit,
   };
 }

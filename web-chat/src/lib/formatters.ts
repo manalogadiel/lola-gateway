@@ -1,4 +1,33 @@
+import type { FamilyMemberDoc } from "./types";
+
 const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
+
+export function getFirstName(name: string, fallback = "Family"): string {
+  const firstWord = name.trim().split(/\s+/)[0] ?? "";
+  return firstWord || fallback;
+}
+
+export function deriveDefaultNickname(displayName: string): string {
+  return getFirstName(displayName, "Family").slice(0, 16);
+}
+
+export function getMemberPrefix(
+  member: Pick<FamilyMemberDoc, "displayName" | "smsNickname">
+): string {
+  return member.smsNickname.trim() || getFirstName(member.displayName, "Family");
+}
+
+export function maskPhoneE164(phoneE164: string): string {
+  const cleaned = phoneE164.replace(/\s+/g, "");
+  const phMatch = /^\+63(\d{3})\d{3}(\d{4})$/.exec(cleaned);
+  if (phMatch) {
+    return `+63 ${phMatch[1]} *** ${phMatch[2]}`;
+  }
+  if (cleaned.length > 6) {
+    return `${cleaned.slice(0, 4)} *** ${cleaned.slice(-4)}`;
+  }
+  return phoneE164;
+}
 
 export function formatTimeShort(timestampMs: number | null): string {
   if (!timestampMs) {

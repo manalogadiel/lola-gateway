@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { BackChevronIcon, SendArrowIcon } from "../components/Icons";
 import { StatusDot, type DotTone } from "../components/StatusDot";
-import { formatTimeShort } from "../lib/formatters";
+import { formatTimeShort, getFirstName } from "../lib/formatters";
 import type { GatewayDisplayState } from "../lib/gatewayApi";
 import { calculateSmsMetrics } from "../lib/smsCounter";
-import type { ChatMessageDoc, FamilyDoc } from "../lib/types";
+import type { ChatMessageDoc, FamilyDoc, QaProps } from "../lib/types";
 
 interface ChatScreenProps {
   family: FamilyDoc;
@@ -12,9 +12,7 @@ interface ChatScreenProps {
   currentUid: string;
   senderSmsNickname: string;
   gatewayDisplay: GatewayDisplayState;
-  qaMode: boolean;
-  qaEventCount: number;
-  onExportQaCsv: () => void;
+  qa: QaProps;
   onBack: () => void;
   onSendMessage: (text: string) => Promise<void>;
   onRetryMessage: (message: ChatMessageDoc) => Promise<void>;
@@ -49,15 +47,29 @@ function getOutboundStatusDisplay(msg: ChatMessageDoc): {
   }
 }
 
+function getHeaderStatusLabel(
+  state: GatewayDisplayState["state"],
+  seniorFirstName: string
+): string {
+  switch (state) {
+    case "online":
+      return `${seniorFirstName} reachable via SMS`;
+    case "cellular_backup":
+      return `${seniorFirstName} via 4G Backup SMS`;
+    case "paused":
+      return "SMS bridge paused";
+    case "offline":
+      return "Gateway offline";
+  }
+}
+
 export function ChatScreen({
   family,
   messages,
   currentUid,
   senderSmsNickname,
   gatewayDisplay,
-  qaMode,
-  qaEventCount,
-  onExportQaCsv,
+  qa,
   onBack,
   onSendMessage,
   onRetryMessage,
@@ -75,28 +87,36 @@ export function ChatScreen({
     }
   }, [messages.length]);
 
-  const smsMetrics = draft.length > 0
-    ? calculateSmsMetrics(senderSmsNickname, draft)
+  const retriedMessageIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const msg of messages) {
+      if (msg.retryOfMessageId) {
+        set.add(msg.retryOfMessageId);
+      }
+    }
+    return set;
+  }, [messages]);
+
+  const trimmedDraft = draft.trim();
+  const smsMetrics = trimmedDraft.length > 0
+    ? calculateSmsMetrics(senderSmsNickname, trimmedDraft)
     : null;
 
-  const headerStatusLabel = gatewayDisplay.reachable
-    ? gatewayDisplay.label === "4G Backup"
-      ? `${family.seniorName.split(/\s+/)[0] || "Lola"} via 4G Backup SMS`
-      : `${family.seniorName.split(/\s+/)[0] || "Lola"} reachable via SMS`
-    : gatewayDisplay.label === "Paused"
-      ? "SMS bridge paused"
-      : "Gateway offline";
+  const seniorFirstName = getFirstName(family.seniorName, "Lola");
+  const headerStatusLabel = getHeaderStatusLabel(
+    gatewayDisplay.state,
+    seniorFirstName
+  );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const trimmed = draft.trim();
-    if (!trimmed || sending) {
+    if (!trimmedDraft || sending) {
       return;
     }
     setSending(true);
     setSendError(null);
     try {
-      await onSendMessage(trimmed);
+      await onSendMessage(trimmedDraft);
       setDraft("");
     } catch (error) {
       setSendError(
@@ -108,7 +128,7 @@ export function ChatScreen({
   };
 
   const handleRetry = async (msg: ChatMessageDoc) => {
-    if (retryingId) {
+    if (retryingId || retriedMessageIds.has(msg.id)) {
       return;
     }
     setRetryingId(msg.id);
@@ -175,6 +195,7 @@ export function ChatScreen({
             const outboundStatus = isInbound
               ? null
               : getOutboundStatusDisplay(msg);
+            const alreadyRetried = retriedMessageIds.has(msg.id);
 
             return (
               <div key={msg.id} className={`msg-group ${groupKind}`}>
@@ -197,19 +218,23 @@ export function ChatScreen({
                       aria-hidden="true"
                     />
                     <span>{outboundStatus?.text}</span>
-                    {msg.status === "FAILED" && (
+                    {isMe && msg.status === "FAILED" && (
                       <>
                         <span aria-hidden="true">·</span>
-                        <button
-                          type="button"
-                          className="retry-link"
-                          disabled={retryingId === msg.id}
-                          onClick={() => handleRetry(msg)}
-                        >
-                          {retryingId === msg.id
-                            ? "Retrying..."
-                            : "Tap to retry"}
-                        </button>
+                        {alreadyRetried ? (
+                          <span>Retried</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="retry-link"
+                            disabled={retryingId === msg.id}
+                            onClick={() => handleRetry(msg)}
+                          >
+                            {retryingId === msg.id
+                              ? "Retrying..."
+                              : "Tap to retry"}
+                          </button>
+                        )}
                       </>
                     )}
                   </span>
@@ -220,13 +245,13 @@ export function ChatScreen({
         )}
       </div>
 
-      {qaMode && (
+      {qa.enabled && (
         <div className="qa-strip tnum">
-          <span>QA Log · {qaEventCount} events</span>
+          <span>QA Log · {qa.eventCount} events</span>
           <button
             type="button"
             className="action-link"
-            onClick={onExportQaCsv}
+            onClick={qa.onExportCsv}
           >
             Export CSV
           </button>
@@ -276,7 +301,7 @@ export function ChatScreen({
             type="submit"
             className="send-coral"
             aria-label="Send message"
-            disabled={sending || !draft.trim()}
+            disabled={sending || !trimmedDraft}
           >
             <SendArrowIcon />
           </button>

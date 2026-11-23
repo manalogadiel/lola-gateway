@@ -28,16 +28,25 @@ describe("calculateSmsMetrics", () => {
     expect(twoParts.limit).toBe(306);
   });
 
-  it("counts GSM-7 extended table characters as 2 septets without switching to UCS-2", () => {
+  it("matches Android multipart boundaries when 2-septet GSM-7 extended chars cross septet 153", () => {
     // "Seb: €" -> 5 basic septets + 2 septets for '€' = 7 septets
-    const res = calculateSmsMetrics("Seb", "€");
-    expect(res.encoding).toBe("GSM-7");
-    expect(res.used).toBe(7);
-    expect(res.segmentCount).toBe(1);
-    expect(res.limit).toBe(160);
+    const single = calculateSmsMetrics("Seb", "€");
+    expect(single.encoding).toBe("GSM-7");
+    expect(single.used).toBe(7);
+    expect(single.segmentCount).toBe(1);
+
+    // 152 'a' + '€' (2 septets, cannot split at 153 -> starts segment 2) + 152 'a' (154 in seg 2 -> spills 1 into seg 3)
+    const boundary = calculateSmsMetrics(
+      "",
+      "a".repeat(152) + "€" + "a".repeat(152)
+    );
+    expect(boundary.encoding).toBe("GSM-7");
+    expect(boundary.used).toBe(306);
+    expect(boundary.segmentCount).toBe(3);
+    expect(boundary.limit).toBe(459);
   });
 
-  it("switches to UCS-2 for emojis and curly quotes with 70/67 limits", () => {
+  it("switches to UCS-2 for emojis and curly quotes and never splits surrogate pairs across 67-unit boundaries", () => {
     const emojiRes = calculateSmsMetrics("Gadiel", "Kumusta 😊");
     expect(emojiRes.encoding).toBe("UCS-2");
     expect(emojiRes.used).toBe(18);
@@ -62,6 +71,16 @@ describe("calculateSmsMetrics", () => {
     expect(ucsTwo.used).toBe(71);
     expect(ucsTwo.segmentCount).toBe(2);
     expect(ucsTwo.limit).toBe(134);
+
+    // 66 'a' + '😊' (2 UTF-16 units, cannot split at 67 -> moves to seg 2) + 66 'a' (68 in seg 2 -> spills into seg 3)
+    const ucsBoundary = calculateSmsMetrics(
+      "",
+      "a".repeat(66) + "😊" + "a".repeat(66)
+    );
+    expect(ucsBoundary.encoding).toBe("UCS-2");
+    expect(ucsBoundary.used).toBe(134);
+    expect(ucsBoundary.segmentCount).toBe(3);
+    expect(ucsBoundary.limit).toBe(201);
   });
 
   it("returns zero segments for empty body input", () => {

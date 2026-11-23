@@ -4,7 +4,9 @@ import { SearchIcon } from "../components/Icons";
 import { StatusDot } from "../components/StatusDot";
 import {
   formatThreadTime,
+  getFirstName,
   getInitials,
+  getMemberPrefix,
   isMemberActive,
   pickAvatarTone,
 } from "../lib/formatters";
@@ -129,7 +131,7 @@ export function HomeScreen({
                 />
               </span>
               <span className="person-name">
-                {family.seniorName.split(/\s+/)[0] || "Lola"}
+                {getFirstName(family.seniorName, "Lola")}
               </span>
             </button>
           )}
@@ -137,8 +139,6 @@ export function HomeScreen({
           {filteredMembers.map((member) => {
             const tone = pickAvatarTone(member.uid);
             const active = isMemberActive(member.lastActiveMs, nowMs);
-            const shortLabel =
-              member.smsNickname || member.displayName.split(/\s+/)[0] || "Member";
             return (
               <button
                 type="button"
@@ -153,7 +153,7 @@ export function HomeScreen({
                   </span>
                   {active && <span className="presence-dot" aria-hidden="true" />}
                 </span>
-                <span className="person-name">{shortLabel}</span>
+                <span className="person-name">{getMemberPrefix(member)}</span>
               </button>
             );
           })}

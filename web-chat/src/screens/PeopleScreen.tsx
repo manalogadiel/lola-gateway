@@ -1,14 +1,16 @@
-import { useState } from "react";
 import { IconBottomDock, type MainTab } from "../components/IconBottomDock";
 import { ChatIcon } from "../components/Icons";
 import { StatusDot } from "../components/StatusDot";
 import {
   formatMemberPresence,
   getInitials,
+  getMemberPrefix,
   isMemberActive,
+  maskPhoneE164,
   pickAvatarTone,
 } from "../lib/formatters";
-import { maskPhoneE164, type GatewayDisplayState } from "../lib/gatewayApi";
+import type { GatewayDisplayState } from "../lib/gatewayApi";
+import { useCopyFeedback } from "../lib/useCopyFeedback";
 import type { FamilyDoc, FamilyMemberDoc } from "../lib/types";
 
 interface PeopleScreenProps {
@@ -21,6 +23,13 @@ interface PeopleScreenProps {
   onOpenChat: () => void;
 }
 
+const SENIOR_STATUS_BY_STATE: Record<GatewayDisplayState["state"], string> = {
+  online: "Reachable via SMS",
+  cellular_backup: "Reachable via 4G SMS",
+  paused: "Paused · texts queue",
+  offline: "Gateway offline",
+};
+
 export function PeopleScreen({
   family,
   members,
@@ -30,26 +39,7 @@ export function PeopleScreen({
   onSelectTab,
   onOpenChat,
 }: PeopleScreenProps) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyCode = async () => {
-    if (!family.joinCode) {
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(family.joinCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard may be unavailable in insecure contexts.
-    }
-  };
-
-  const seniorStatusText = gatewayDisplay.reachable
-    ? "Reachable via SMS"
-    : gatewayDisplay.label === "Paused"
-      ? "Paused · texts queue"
-      : "Gateway offline";
+  const { copied, copy } = useCopyFeedback();
 
   return (
     <>
@@ -59,7 +49,7 @@ export function PeopleScreen({
           <button
             type="button"
             className="invite-text-btn"
-            onClick={handleCopyCode}
+            onClick={() => copy(family.joinCode)}
           >
             {copied ? "Code Copied" : "+ Invite"}
           </button>
@@ -84,7 +74,7 @@ export function PeopleScreen({
             </div>
             <StatusDot
               tone={gatewayDisplay.tone}
-              label={seniorStatusText}
+              label={SENIOR_STATUS_BY_STATE[gatewayDisplay.state]}
               compact
             />
           </div>
@@ -107,8 +97,7 @@ export function PeopleScreen({
           {members.map((member) => {
             const tone = pickAvatarTone(member.uid);
             const active = isMemberActive(member.lastActiveMs, nowMs);
-            const prefix =
-              member.smsNickname || member.displayName.split(/\s+/)[0] || "Family";
+            const prefix = getMemberPrefix(member);
             const parts: string[] = [];
             if (member.uid === currentUid) {
               parts.push("You");
@@ -145,7 +134,7 @@ export function PeopleScreen({
           <button
             type="button"
             className="copy-pill-sm"
-            onClick={handleCopyCode}
+            onClick={() => copy(family.joinCode)}
             aria-live="polite"
           >
             {copied ? "Copied" : "Copy Code"}

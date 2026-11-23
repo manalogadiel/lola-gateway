@@ -14,9 +14,31 @@ describe("qaLogger", () => {
     expect(isQaModeEnabled("")).toBe(false);
   });
 
-  it("deduplicates identical (messageId, status) observations and tracks status transitions", () => {
+  it("seeds initial history without logging it, then records live status transitions without duplicates", () => {
     const recorder = createQaRecorder();
-    const baseMsg: ChatMessageDoc = {
+    const historicalMsg: ChatMessageDoc = {
+      id: "msg-old",
+      direction: "INBOUND",
+      senderUid: "senior",
+      senderName: "Lola Elena",
+      text: "Old text",
+      smsFormattedText: "Old text",
+      encoding: "GSM-7",
+      segmentCount: 1,
+      status: "DELIVERED",
+      retryCount: 0,
+      errorCode: null,
+      errorReason: null,
+      retryOfMessageId: null,
+      createdAtMs: 500,
+      queuedOnGatewayAtMs: 500,
+      sentAtMs: 500,
+      deliveredAtMs: 500,
+      statusUpdatedAtMs: 500,
+      gatewayNetworkAtSend: "WIFI",
+    };
+
+    const liveMsg: ChatMessageDoc = {
       id: "msg-1",
       direction: "OUTBOUND",
       senderUid: "uid-seb",
@@ -38,15 +60,20 @@ describe("qaLogger", () => {
       gatewayNetworkAtSend: null,
     };
 
-    recorder.observeMessages([baseMsg], 1050);
-    recorder.observeMessages([baseMsg], 1100);
+    recorder.observeMessages([historicalMsg], 900, { seedOnly: true });
+    expect(recorder.getEvents()).toHaveLength(0);
+
+    recorder.observeMessages([historicalMsg, liveMsg], 1050);
+    recorder.observeMessages([historicalMsg, liveMsg], 1100);
     recorder.observeMessages(
       [
+        historicalMsg,
         {
-          ...baseMsg,
+          ...liveMsg,
           status: "DELIVERED",
           sentAtMs: 2500,
           deliveredAtMs: 4200,
+          statusUpdatedAtMs: 4200,
           gatewayNetworkAtSend: "WIFI",
         },
       ],
@@ -55,13 +82,16 @@ describe("qaLogger", () => {
 
     const events = recorder.getEvents();
     expect(events).toHaveLength(2);
+    expect(events[0].messageId).toBe("msg-1");
     expect(events[0].status).toBe("QUEUED");
+    expect(events[0].statusUpdatedAtMs).toBe(1000);
     expect(events[0].browserObservedAtMs).toBe(1050);
     expect(events[1].status).toBe("DELIVERED");
+    expect(events[1].statusUpdatedAtMs).toBe(4200);
     expect(events[1].browserObservedAtMs).toBe(4500);
   });
 
-  it("formats RFC-4180 CSV with the Task 5 schema plus browserObservedAtMs", () => {
+  it("formats RFC-4180 CSV with Task 5 columns plus statusUpdatedAtMs and browserObservedAtMs", () => {
     const csv = formatQaEventsCsv([
       {
         messageId: "msg-1",
@@ -72,6 +102,7 @@ describe("qaLogger", () => {
         createdAtMs: 1000,
         sentAtMs: 2500,
         deliveredAtMs: 4200,
+        statusUpdatedAtMs: 4200,
         status: "DELIVERED",
         retryCount: 0,
         errorCode: "",
@@ -86,6 +117,7 @@ describe("qaLogger", () => {
         createdAtMs: 5000,
         sentAtMs: null,
         deliveredAtMs: null,
+        statusUpdatedAtMs: 5100,
         status: "FAILED",
         retryCount: 4,
         errorCode: "NO_SERVICE",
@@ -95,13 +127,13 @@ describe("qaLogger", () => {
 
     const lines = csv.split("\n");
     expect(lines[0]).toBe(
-      "messageId,direction,encoding,segments,network,createdAtMs,sentAtMs,deliveredAtMs,status,retryCount,errorCode,browserObservedAtMs"
+      "messageId,direction,encoding,segments,network,createdAtMs,sentAtMs,deliveredAtMs,statusUpdatedAtMs,status,retryCount,errorCode,browserObservedAtMs"
     );
     expect(lines[1]).toBe(
-      "msg-1,OUTBOUND,GSM-7,1,WIFI,1000,2500,4200,DELIVERED,0,,4500"
+      "msg-1,OUTBOUND,GSM-7,1,WIFI,1000,2500,4200,4200,DELIVERED,0,,4500"
     );
     expect(lines[2]).toBe(
-      '"msg-""quoted"",2",OUTBOUND,UCS-2,2,,5000,,,FAILED,4,NO_SERVICE,5200'
+      '"msg-""quoted"",2",OUTBOUND,UCS-2,2,,5000,,,5100,FAILED,4,NO_SERVICE,5200'
     );
   });
 });

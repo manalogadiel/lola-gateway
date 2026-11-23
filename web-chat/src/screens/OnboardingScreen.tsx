@@ -78,8 +78,8 @@ export function OnboardingScreen({
 
           {!firebaseConfigured && (
             <div className="inline-banner warn" role="status" style={{ marginBottom: 12 }}>
-              Firebase config is not set yet. Copy <code>.env.example</code> to{" "}
-              <code>.env.local</code> with your Firebase Spark web keys to sign in.
+              This family chat link is not configured yet. Ask your family host
+              for the live app link to sign in.
             </div>
           )}
 

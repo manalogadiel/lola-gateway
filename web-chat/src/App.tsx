@@ -12,8 +12,8 @@ import {
   subscribeMembers,
   subscribeMessages,
 } from "./lib/firebase";
+import { deriveDefaultNickname, getMemberPrefix } from "./lib/formatters";
 import {
-  deriveDefaultNickname,
   deriveGatewayDisplayState,
   joinFamilyByCode,
   retryFailedMessage,
@@ -34,6 +34,8 @@ import type {
   ChatMessageDoc,
   FamilyDoc,
   FamilyMemberDoc,
+  QaProps,
+  SenderContext,
   ThemePreference,
 } from "./lib/types";
 import { ChatScreen } from "./screens/ChatScreen";
@@ -79,6 +81,7 @@ export function App() {
 
   const qaMode = useMemo(() => isQaModeEnabled(window.location.search), []);
   const qaRecorderRef = useRef(createQaRecorder());
+  const qaSeededRef = useRef(false);
   const [qaEventCount, setQaEventCount] = useState(0);
 
   const [themePref, setThemePref] = useState<ThemePreference>(() =>
@@ -90,6 +93,7 @@ export function App() {
   const [family, setFamily] = useState<FamilyDoc | null>(null);
   const [members, setMembers] = useState<FamilyMemberDoc[]>([]);
   const [messages, setMessages] = useState<ChatMessageDoc[]>([]);
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [syncingFamily, setSyncingFamily] = useState(false);
 
   const [activeView, setActiveView] = useState<AppView>("home");
@@ -97,13 +101,11 @@ export function App() {
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
-  // Keep relative presence & 20-min Gateway staleness fresh while open.
   useEffect(() => {
     const interval = window.setInterval(() => setNowMs(Date.now()), 30_000);
     return () => window.clearInterval(interval);
   }, []);
 
-  // Apply Light Cream / Dark Twilight theme and track system changes in Auto mode.
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const syncTheme = () => {
@@ -119,7 +121,6 @@ export function App() {
     saveThemePreference(nextPref);
   }, []);
 
-  // Observe Firebase Auth state.
   useEffect(() => {
     if (!services) {
       return;
@@ -128,19 +129,19 @@ export function App() {
       setUser(nextUser);
       setAuthReady(true);
       if (nextUser) {
-        const storedFamily = readStoredFamilyId(nextUser.uid);
-        setFamilyId(storedFamily);
+        setFamilyId(readStoredFamilyId(nextUser.uid));
       } else {
         setFamilyId(null);
         setFamily(null);
         setMembers([]);
         setMessages([]);
+        setMessagesLoaded(false);
+        qaSeededRef.current = false;
         setActiveView("home");
       }
     });
   }, [services]);
 
-  // Subscribe to family, members, and messages when authenticated + paired.
   useEffect(() => {
     if (!services || !user || !familyId) {
       setSyncingFamily(false);
@@ -148,6 +149,8 @@ export function App() {
     }
 
     setSyncingFamily(true);
+    setMessagesLoaded(false);
+    qaSeededRef.current = false;
     setOnboardingError(null);
 
     const handleSubError = () => {
@@ -156,6 +159,7 @@ export function App() {
       setFamily(null);
       setMembers([]);
       setMessages([]);
+      setMessagesLoaded(false);
       setSyncingFamily(false);
       setOnboardingError(
         "Could not access that family group. Enter your family code to rejoin."
@@ -190,10 +194,7 @@ export function App() {
       familyId,
       (list) => {
         setMessages(list);
-        if (qaMode) {
-          qaRecorderRef.current.observeMessages(list, Date.now());
-          setQaEventCount(qaRecorderRef.current.getEvents().length);
-        }
+        setMessagesLoaded(true);
       },
       () => {
         // Family listener owns access revocation recovery.
@@ -213,7 +214,18 @@ export function App() {
       unsubMembers();
       unsubMessages();
     };
-  }, [services, apiDeps, user, familyId, qaMode]);
+  }, [services, apiDeps, user, familyId]);
+
+  // Post-render QA timestamp observation: seeds initial history once, then logs live events.
+  useEffect(() => {
+    if (!qaMode || !messagesLoaded) {
+      return;
+    }
+    const seedOnly = !qaSeededRef.current;
+    qaSeededRef.current = true;
+    qaRecorderRef.current.observeMessages(messages, Date.now(), { seedOnly });
+    setQaEventCount(qaRecorderRef.current.getEvents().length);
+  }, [qaMode, messagesLoaded, messages]);
 
   const currentMember = useMemo(
     () => (user ? members.find((m) => m.uid === user.uid) ?? null : null),
@@ -221,15 +233,39 @@ export function App() {
   );
 
   const senderSmsNickname = useMemo(() => {
-    if (currentMember?.smsNickname) {
-      return currentMember.smsNickname;
+    if (currentMember) {
+      return getMemberPrefix(currentMember);
     }
     return deriveDefaultNickname(user?.displayName ?? "Family");
   }, [currentMember, user]);
 
+  const senderContext = useMemo<SenderContext | null>(() => {
+    if (!user || !familyId) {
+      return null;
+    }
+    return {
+      familyId,
+      senderUid: user.uid,
+      senderName: senderSmsNickname,
+    };
+  }, [user, familyId, senderSmsNickname]);
+
   const gatewayDisplay = useMemo(
     () => deriveGatewayDisplayState(family?.gateway, nowMs),
     [family?.gateway, nowMs]
+  );
+
+  const handleExportQaCsv = useCallback(() => {
+    downloadQaCsv(qaRecorderRef.current.getEvents());
+  }, []);
+
+  const qaProps = useMemo<QaProps>(
+    () => ({
+      enabled: qaMode,
+      eventCount: qaEventCount,
+      onExportCsv: handleExportQaCsv,
+    }),
+    [qaMode, qaEventCount, handleExportQaCsv]
   );
 
   const handleGoogleSignIn = useCallback(async () => {
@@ -292,38 +328,22 @@ export function App() {
 
   const handleSendMessage = useCallback(
     async (text: string) => {
-      if (!apiDeps || !user || !familyId) {
+      if (!apiDeps || !senderContext) {
         return;
       }
-      await sendOutboundMessage(
-        {
-          familyId,
-          senderUid: user.uid,
-          senderName: senderSmsNickname,
-          text,
-        },
-        apiDeps
-      );
+      await sendOutboundMessage(senderContext, text, apiDeps);
     },
-    [apiDeps, user, familyId, senderSmsNickname]
+    [apiDeps, senderContext]
   );
 
   const handleRetryMessage = useCallback(
     async (failedMessage: ChatMessageDoc) => {
-      if (!apiDeps || !user || !familyId) {
+      if (!apiDeps || !senderContext) {
         return;
       }
-      await retryFailedMessage(
-        failedMessage,
-        {
-          familyId,
-          senderUid: user.uid,
-          senderName: senderSmsNickname,
-        },
-        apiDeps
-      );
+      await retryFailedMessage(failedMessage, senderContext, apiDeps);
     },
-    [apiDeps, user, familyId, senderSmsNickname]
+    [apiDeps, senderContext]
   );
 
   const handleUpdateNickname = useCallback(
@@ -338,10 +358,6 @@ export function App() {
     },
     [apiDeps, user, familyId]
   );
-
-  const handleExportQaCsv = useCallback(() => {
-    downloadQaCsv(qaRecorderRef.current.getEvents());
-  }, []);
 
   let screen: React.ReactNode;
 
@@ -375,9 +391,7 @@ export function App() {
         currentUid={user.uid}
         senderSmsNickname={senderSmsNickname}
         gatewayDisplay={gatewayDisplay}
-        qaMode={qaMode}
-        qaEventCount={qaEventCount}
-        onExportQaCsv={handleExportQaCsv}
+        qa={qaProps}
         onBack={() => setActiveView("home")}
         onSendMessage={handleSendMessage}
         onRetryMessage={handleRetryMessage}
@@ -403,11 +417,9 @@ export function App() {
         fallbackDisplayName={user.displayName || user.email || "Family Member"}
         gatewayDisplay={gatewayDisplay}
         themePref={themePref}
-        qaMode={qaMode}
-        qaEventCount={qaEventCount}
+        qa={qaProps}
         onChangeTheme={handleChangeTheme}
         onUpdateNickname={handleUpdateNickname}
-        onExportQaCsv={handleExportQaCsv}
         onSignOut={handleSignOut}
         onSelectTab={setActiveView}
         onOpenChat={() => setActiveView("chat")}

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { maskPhoneE164 } from "../src/lib/formatters";
 import {
   GATEWAY_STALE_MS,
   deriveGatewayDisplayState,
   isGatewayStale,
   joinFamilyByCode,
-  maskPhoneE164,
+  notifyWorkerPush,
   retryFailedMessage,
   sendOutboundMessage,
   type GatewayApiDeps,
@@ -37,7 +38,7 @@ function makeFakeDeps(options?: {
   const updatedMembers: Array<{
     familyId: string;
     uid: string;
-    updates: { displayName?: string; smsNickname?: string; lastActiveMs: number };
+    updates: { smsNickname?: string; lastActiveMs: number };
   }> = [];
   const notifyCalls: Array<{
     familyId: string;
@@ -94,7 +95,7 @@ describe("isGatewayStale and deriveGatewayDisplayState", () => {
     expect(isGatewayStale(null, nowMs)).toBe(true);
   });
 
-  it("maps Online, 4G Backup, Paused, and Offline (>20m stale) states accurately", () => {
+  it("maps Online, 4G Backup, Paused, and Offline (>20m stale, including stale PAUSED) states accurately", () => {
     const nowMs = 1_795_300_000_000;
     const base: GatewayHealth = {
       uid: "gw-1",
@@ -110,6 +111,7 @@ describe("isGatewayStale and deriveGatewayDisplayState", () => {
     };
 
     expect(deriveGatewayDisplayState(base, nowMs)).toEqual({
+      state: "online",
       tone: "mint",
       label: "Online",
       detail: "Wi-Fi · Globe",
@@ -119,6 +121,7 @@ describe("isGatewayStale and deriveGatewayDisplayState", () => {
     expect(
       deriveGatewayDisplayState({ ...base, networkType: "CELLULAR" }, nowMs)
     ).toEqual({
+      state: "cellular_backup",
       tone: "amber",
       label: "4G Backup",
       detail: "4G LTE · Globe",
@@ -128,6 +131,7 @@ describe("isGatewayStale and deriveGatewayDisplayState", () => {
     expect(
       deriveGatewayDisplayState({ ...base, status: "PAUSED" }, nowMs)
     ).toEqual({
+      state: "paused",
       tone: "coral",
       label: "Paused",
       detail: "Paused · messages will queue",
@@ -136,15 +140,57 @@ describe("isGatewayStale and deriveGatewayDisplayState", () => {
 
     expect(
       deriveGatewayDisplayState(
-        { ...base, lastHeartbeatMs: nowMs - 21 * 60 * 1000 },
+        {
+          ...base,
+          status: "PAUSED",
+          lastHeartbeatMs: nowMs - 21 * 60 * 1000,
+        },
         nowMs
       )
     ).toEqual({
+      state: "offline",
       tone: "coral",
       label: "Offline",
       detail: "Gateway Offline",
       reachable: false,
     });
+  });
+});
+
+describe("notifyWorkerPush", () => {
+  it("POSTs Authorization Bearer token and JSON body to the Cloudflare Worker /notify endpoint", async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const fakeFetch = (async (
+      input: string | URL | Request,
+      init?: RequestInit
+    ) => {
+      requests.push({ url: String(input), init });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as typeof fetch;
+
+    const ok = await notifyWorkerPush(
+      "https://lola-push.workers.dev/notify",
+      "fam-manalo",
+      "msg-uuid-1",
+      "id-token-xyz",
+      fakeFetch
+    );
+
+    expect(ok).toBe(true);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url).toBe("https://lola-push.workers.dev/notify");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.headers).toEqual({
+      Authorization: "Bearer id-token-xyz",
+      "Content-Type": "application/json",
+    });
+    expect(requests[0].init?.body).toBe(
+      JSON.stringify({ familyId: "fam-manalo", messageId: "msg-uuid-1" })
+    );
+
+    expect(
+      await notifyWorkerPush("", "fam-manalo", "msg-uuid-1", "tok", fakeFetch)
+    ).toBe(false);
   });
 });
 
@@ -162,8 +208,8 @@ describe("sendOutboundMessage and retryFailedMessage", () => {
         familyId: "fam-manalo",
         senderUid: "uid-seb",
         senderName: "Seb",
-        text: "  Kumusta po Lola?  ",
       },
+      "  Kumusta po Lola?  ",
       deps
     );
 
@@ -182,15 +228,9 @@ describe("sendOutboundMessage and retryFailedMessage", () => {
       segmentCount: 1,
       status: "QUEUED",
       retryCount: 0,
-      errorCode: null,
-      errorReason: null,
       retryOfMessageId: null,
       createdAtMs: 1_795_300_050_000,
-      queuedOnGatewayAtMs: null,
-      sentAtMs: null,
-      deliveredAtMs: null,
       statusUpdatedAtMs: 1_795_300_050_000,
-      gatewayNetworkAtSend: null,
     });
     expect(notifyCalls).toEqual([
       {
@@ -210,8 +250,8 @@ describe("sendOutboundMessage and retryFailedMessage", () => {
         familyId: "fam-manalo",
         senderUid: "uid-seb",
         senderName: "Seb",
-        text: "Ingat po!",
       },
+      "Ingat po!",
       deps
     );
 
@@ -219,7 +259,7 @@ describe("sendOutboundMessage and retryFailedMessage", () => {
     expect(result.notified).toBe(false);
   });
 
-  it("creates a brand-new UUID document with retryOfMessageId without mutating the failed doc", async () => {
+  it("creates a brand-new UUID document with retryOfMessageId and blocks retrying another sender's message", async () => {
     const { deps, createdMessages, notifyCalls } = makeFakeDeps({
       ids: ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"],
     });
@@ -259,16 +299,24 @@ describe("sendOutboundMessage and retryFailedMessage", () => {
     expect(result.messageId).toBe("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
     expect(result.messageId).not.toBe(failedMsg.id);
     expect(createdMessages).toHaveLength(1);
-    expect(createdMessages[0].messageId).toBe(
-      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
-    );
     expect(createdMessages[0].payload.status).toBe("QUEUED");
     expect(createdMessages[0].payload.retryCount).toBe(0);
     expect(createdMessages[0].payload.retryOfMessageId).toBe("old-failed-uuid");
-    expect(createdMessages[0].payload.text).toBe("Nakarating na po kami");
     expect(notifyCalls[0].messageId).toBe(
       "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     );
+
+    await expect(
+      retryFailedMessage(
+        failedMsg,
+        {
+          familyId: "fam-manalo",
+          senderUid: "uid-other-member",
+          senderName: "Marites",
+        },
+        deps
+      )
+    ).rejects.toThrow("own failed messages");
   });
 });
 

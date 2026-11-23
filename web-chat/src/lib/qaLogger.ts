@@ -14,6 +14,7 @@ export interface QaTrialEvent {
   createdAtMs: number | null;
   sentAtMs: number | null;
   deliveredAtMs: number | null;
+  statusUpdatedAtMs: number | null;
   status: MessageStatus;
   retryCount: number;
   errorCode: string;
@@ -21,7 +22,7 @@ export interface QaTrialEvent {
 }
 
 const CSV_HEADER =
-  "messageId,direction,encoding,segments,network,createdAtMs,sentAtMs,deliveredAtMs,status,retryCount,errorCode,browserObservedAtMs";
+  "messageId,direction,encoding,segments,network,createdAtMs,sentAtMs,deliveredAtMs,statusUpdatedAtMs,status,retryCount,errorCode,browserObservedAtMs";
 
 export function isQaModeEnabled(search: string): boolean {
   return new URLSearchParams(search).get("qa") === "1";
@@ -49,6 +50,7 @@ export function formatQaEventsCsv(events: readonly QaTrialEvent[]): string {
       event.createdAtMs,
       event.sentAtMs,
       event.deliveredAtMs,
+      event.statusUpdatedAtMs,
       event.status,
       event.retryCount,
       event.errorCode,
@@ -68,7 +70,8 @@ export function createQaRecorder() {
   return {
     observeMessages(
       messages: readonly ChatMessageDoc[],
-      observedAtMs: number = Date.now()
+      observedAtMs: number = Date.now(),
+      options?: { seedOnly?: boolean }
     ) {
       for (const msg of messages) {
         const key = `${msg.id}::${msg.status}::${msg.retryCount}`;
@@ -76,6 +79,9 @@ export function createQaRecorder() {
           continue;
         }
         seenKeys.add(key);
+        if (options?.seedOnly) {
+          continue;
+        }
         events.push({
           messageId: msg.id,
           direction: msg.direction,
@@ -85,6 +91,7 @@ export function createQaRecorder() {
           createdAtMs: msg.createdAtMs,
           sentAtMs: msg.sentAtMs,
           deliveredAtMs: msg.deliveredAtMs,
+          statusUpdatedAtMs: msg.statusUpdatedAtMs,
           status: msg.status,
           retryCount: msg.retryCount,
           errorCode: msg.errorCode ?? "",
@@ -94,10 +101,6 @@ export function createQaRecorder() {
     },
     getEvents(): readonly QaTrialEvent[] {
       return events;
-    },
-    clear() {
-      seenKeys.clear();
-      events.length = 0;
     },
   };
 }

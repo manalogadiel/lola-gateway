@@ -3,13 +3,18 @@ import { IconBottomDock, type MainTab } from "../components/IconBottomDock";
 import { StatusDot } from "../components/StatusDot";
 import {
   formatTimeShort,
+  getFirstName,
   getInitials,
+  getMemberPrefix,
+  maskPhoneE164,
   pickAvatarTone,
 } from "../lib/formatters";
-import { maskPhoneE164, type GatewayDisplayState } from "../lib/gatewayApi";
+import type { GatewayDisplayState } from "../lib/gatewayApi";
+import { useCopyFeedback } from "../lib/useCopyFeedback";
 import type {
   FamilyDoc,
   FamilyMemberDoc,
+  QaProps,
   ThemePreference,
 } from "../lib/types";
 
@@ -19,11 +24,9 @@ interface SettingsScreenProps {
   fallbackDisplayName: string;
   gatewayDisplay: GatewayDisplayState;
   themePref: ThemePreference;
-  qaMode: boolean;
-  qaEventCount: number;
+  qa: QaProps;
   onChangeTheme: (pref: ThemePreference) => void;
   onUpdateNickname: (nickname: string) => Promise<void>;
-  onExportQaCsv: () => void;
   onSignOut: () => Promise<void>;
   onSelectTab: (tab: MainTab) => void;
   onOpenChat: () => void;
@@ -35,24 +38,23 @@ export function SettingsScreen({
   fallbackDisplayName,
   gatewayDisplay,
   themePref,
-  qaMode,
-  qaEventCount,
+  qa,
   onChangeTheme,
   onUpdateNickname,
-  onExportQaCsv,
   onSignOut,
   onSelectTab,
   onOpenChat,
 }: SettingsScreenProps) {
   const displayName = currentMember?.displayName || fallbackDisplayName;
-  const currentNickname =
-    currentMember?.smsNickname || displayName.split(/\s+/)[0] || "Family";
+  const currentNickname = currentMember
+    ? getMemberPrefix(currentMember)
+    : getFirstName(displayName, "Family");
 
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(currentNickname);
   const [savingNickname, setSavingNickname] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { copied, copy } = useCopyFeedback();
 
   const tone = pickAvatarTone(currentMember?.uid || displayName);
 
@@ -76,22 +78,26 @@ export function SettingsScreen({
     }
   };
 
-  const handleCopyCode = async () => {
-    if (!family.joinCode) {
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(family.joinCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Ignore clipboard failures in restricted contexts.
-    }
-  };
+  const allowList = family.allowListE164.length > 0
+    ? family.allowListE164
+    : family.seniorPhoneE164
+      ? [family.seniorPhoneE164]
+      : [];
 
-  const batteryText = family.gateway.batteryPercent
-    ? ` · ${family.gateway.batteryPercent}%${family.gateway.isCharging ? " charging" : ""}`
-    : "";
+  const allowListSummary =
+    allowList.length === 1
+      ? `${maskPhoneE164(allowList[0])} · Allowed sender`
+      : `${allowList.map(maskPhoneE164).join(", ")} (${allowList.length} allowed)`;
+
+  const bridgeSubtitle = (() => {
+    if (gatewayDisplay.state === "offline") {
+      return family.gateway.lastHeartbeatMs
+        ? `Offline · last seen ${formatTimeShort(family.gateway.lastHeartbeatMs)}`
+        : "Waiting for Gateway phone";
+    }
+    const battery = `${family.gateway.batteryPercent}%${family.gateway.isCharging ? " charging" : ""}`;
+    return `${gatewayDisplay.detail} · ${battery}`;
+  })();
 
   return (
     <>
@@ -119,7 +125,7 @@ export function SettingsScreen({
             <div className="setting-title">{displayName}</div>
             {!editingNickname ? (
               <div className="setting-sub">
-                Shown to {family.seniorName.split(/\s+/)[0] || "Lola"} as &ldquo;
+                Shown to {getFirstName(family.seniorName, "Lola")} as &ldquo;
                 {currentNickname}&rdquo;
               </div>
             ) : (
@@ -175,9 +181,7 @@ export function SettingsScreen({
           <div className="setting-row">
             <div>
               <div className="setting-title">{family.seniorName}</div>
-              <div className="setting-sub tnum">
-                {maskPhoneE164(family.seniorPhoneE164)} · Allowed sender
-              </div>
+              <div className="setting-sub tnum">{allowListSummary}</div>
             </div>
           </div>
           <div className="setting-row">
@@ -188,7 +192,7 @@ export function SettingsScreen({
             <button
               type="button"
               className="action-link"
-              onClick={handleCopyCode}
+              onClick={() => copy(family.joinCode)}
               aria-live="polite"
             >
               {copied ? "Copied" : "Copy"}
@@ -202,23 +206,10 @@ export function SettingsScreen({
         <div className="group-card">
           <div className="setting-row">
             <div>
-              <div className="setting-title">SMS Bridge Health</div>
-              <div className="setting-sub tnum">
-                {gatewayDisplay.detail}
-                {batteryText}
-              </div>
+              <div className="setting-title">SMS Bridge</div>
+              <div className="setting-sub tnum">{bridgeSubtitle}</div>
             </div>
             <StatusDot tone={gatewayDisplay.tone} label={gatewayDisplay.label} />
-          </div>
-          <div className="setting-row">
-            <div>
-              <div className="setting-title">Last Heartbeat</div>
-              <div className="setting-sub tnum">
-                {family.gateway.lastHeartbeatMs
-                  ? formatTimeShort(family.gateway.lastHeartbeatMs)
-                  : "Waiting for Gateway phone"}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -254,7 +245,7 @@ export function SettingsScreen({
           </div>
         </div>
 
-        {qaMode && (
+        {qa.enabled && (
           <>
             <div className="section-row-head">
               <span className="section-label">QA Trial Logger (?qa=1)</span>
@@ -264,13 +255,13 @@ export function SettingsScreen({
                 <div>
                   <div className="setting-title">Browser Latency Log</div>
                   <div className="setting-sub tnum">
-                    {qaEventCount} observed message events
+                    {qa.eventCount} observed message events
                   </div>
                 </div>
                 <button
                   type="button"
                   className="action-link"
-                  onClick={onExportQaCsv}
+                  onClick={qa.onExportCsv}
                 >
                   Export CSV
                 </button>
