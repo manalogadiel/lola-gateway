@@ -1,0 +1,274 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "b1fdb6229854b68cb3605529daa74fa7",
+    "entities": [
+      {
+        "tableName": "messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`messageId` TEXT NOT NULL, `familyId` TEXT NOT NULL, `direction` TEXT NOT NULL, `senderUid` TEXT NOT NULL, `senderName` TEXT NOT NULL, `text` TEXT NOT NULL, `smsFormattedText` TEXT NOT NULL, `encoding` TEXT NOT NULL, `segmentCount` INTEGER NOT NULL, `status` TEXT NOT NULL, `localDispatchState` TEXT NOT NULL, `syncDirty` INTEGER NOT NULL, `createInCloud` INTEGER NOT NULL, `version` INTEGER NOT NULL, `retryCount` INTEGER NOT NULL, `nextRetryAtMs` INTEGER NOT NULL, `dispatchStartedAtMs` INTEGER, `errorCode` TEXT, `errorReason` TEXT, `createdAtMs` INTEGER NOT NULL, `queuedOnGatewayAtMs` INTEGER, `sentAtMs` INTEGER, `deliveredAtMs` INTEGER, `statusUpdatedAtMs` INTEGER NOT NULL, `gatewayNetwork` TEXT, `diagnosticDestination` TEXT, `retryOfMessageId` TEXT, PRIMARY KEY(`messageId`))",
+        "fields": [
+          {
+            "fieldPath": "messageId",
+            "columnName": "messageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "familyId",
+            "columnName": "familyId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "direction",
+            "columnName": "direction",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderUid",
+            "columnName": "senderUid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderName",
+            "columnName": "senderName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "smsFormattedText",
+            "columnName": "smsFormattedText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encoding",
+            "columnName": "encoding",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "segmentCount",
+            "columnName": "segmentCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localDispatchState",
+            "columnName": "localDispatchState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncDirty",
+            "columnName": "syncDirty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createInCloud",
+            "columnName": "createInCloud",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryCount",
+            "columnName": "retryCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextRetryAtMs",
+            "columnName": "nextRetryAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dispatchStartedAtMs",
+            "columnName": "dispatchStartedAtMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "errorCode",
+            "columnName": "errorCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorReason",
+            "columnName": "errorReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtMs",
+            "columnName": "createdAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queuedOnGatewayAtMs",
+            "columnName": "queuedOnGatewayAtMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sentAtMs",
+            "columnName": "sentAtMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deliveredAtMs",
+            "columnName": "deliveredAtMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "statusUpdatedAtMs",
+            "columnName": "statusUpdatedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gatewayNetwork",
+            "columnName": "gatewayNetwork",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "diagnosticDestination",
+            "columnName": "diagnosticDestination",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "retryOfMessageId",
+            "columnName": "retryOfMessageId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "messageId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_messages_familyId_localDispatchState_createdAtMs",
+            "unique": false,
+            "columnNames": [
+              "familyId",
+              "localDispatchState",
+              "createdAtMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_messages_familyId_localDispatchState_createdAtMs` ON `${TABLE_NAME}` (`familyId`, `localDispatchState`, `createdAtMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sms_parts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`messageId` TEXT NOT NULL, `attempt` INTEGER NOT NULL, `partIndex` INTEGER NOT NULL, `sentResultCode` INTEGER, `deliveryStatus` INTEGER, PRIMARY KEY(`messageId`, `attempt`, `partIndex`))",
+        "fields": [
+          {
+            "fieldPath": "messageId",
+            "columnName": "messageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempt",
+            "columnName": "attempt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partIndex",
+            "columnName": "partIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentResultCode",
+            "columnName": "sentResultCode",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deliveryStatus",
+            "columnName": "deliveryStatus",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "messageId",
+            "attempt",
+            "partIndex"
+          ]
+        }
+      },
+      {
+        "tableName": "handoff_logs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `oldTransport` TEXT NOT NULL, `newTransport` TEXT NOT NULL, `transitionedAtMs` INTEGER NOT NULL, `recoveredAtMs` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oldTransport",
+            "columnName": "oldTransport",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "newTransport",
+            "columnName": "newTransport",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "transitionedAtMs",
+            "columnName": "transitionedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recoveredAtMs",
+            "columnName": "recoveredAtMs",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b1fdb6229854b68cb3605529daa74fa7')"
+    ]
+  }
+}
