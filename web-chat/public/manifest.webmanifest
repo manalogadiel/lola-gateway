@@ -1,0 +1,18 @@
+{
+  "name": "Lola Gateway",
+  "short_name": "Lola Chat",
+  "description": "Standalone family group chat bridged to a senior's keypad phone over live SMS.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F5EF",
+  "theme_color": "#5E69DC",
+  "icons": [
+    {
+      "src": "/assets/lola-avatar.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
