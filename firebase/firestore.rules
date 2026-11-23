@@ -1,0 +1,299 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isNonEmptyString(val) {
+      return val is string && val.size() > 0;
+    }
+
+    function isNullableString(val) {
+      return val == null || val is string;
+    }
+
+    function isNullableInt(val) {
+      return val == null || val is int;
+    }
+
+    function isNullableTimestamp(val) {
+      return val == null || val is timestamp;
+    }
+
+    function familyExists(familyId) {
+      return exists(/databases/$(database)/documents/families/$(familyId));
+    }
+
+    function familyExistsAfter(familyId) {
+      return existsAfter(/databases/$(database)/documents/families/$(familyId));
+    }
+
+    function familyDoc(familyId) {
+      return get(/databases/$(database)/documents/families/$(familyId));
+    }
+
+    function familyDocAfter(familyId) {
+      return getAfter(/databases/$(database)/documents/families/$(familyId));
+    }
+
+    function isFamilyGateway(familyId) {
+      return isSignedIn()
+        && familyExists(familyId)
+        && familyDoc(familyId).data.gateway.uid == request.auth.uid;
+    }
+
+    function isFamilyGatewayAfter(familyId) {
+      return isSignedIn()
+        && familyExistsAfter(familyId)
+        && familyDocAfter(familyId).data.gateway.uid == request.auth.uid;
+    }
+
+    function isFamilyMember(familyId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid));
+    }
+
+    function isFamilyParticipant(familyId) {
+      return isFamilyMember(familyId) || isFamilyGateway(familyId);
+    }
+
+    function validGatewayMap(gw) {
+      return gw is map
+        && gw.keys().hasOnly([
+          'uid',
+          'deviceId',
+          'fcmToken',
+          'status',
+          'networkType',
+          'carrierName',
+          'signalDbm',
+          'batteryPercent',
+          'isCharging',
+          'lastHeartbeatAt'
+        ])
+        && isNonEmptyString(gw.uid)
+        && gw.deviceId is string
+        && gw.fcmToken is string
+        && gw.status in ['ONLINE', 'OFFLINE', 'PAUSED']
+        && gw.networkType in ['WIFI', 'CELLULAR', 'NONE']
+        && gw.carrierName is string
+        && (!('signalDbm' in gw) || isNullableInt(gw.signalDbm))
+        && gw.batteryPercent is int && gw.batteryPercent >= 0 && gw.batteryPercent <= 100
+        && gw.isCharging is bool
+        && gw.lastHeartbeatAt is timestamp;
+    }
+
+    function validFamilyData(data) {
+      return data.keys().hasOnly([
+          'name',
+          'joinCode',
+          'seniorName',
+          'seniorPhoneE164',
+          'allowListE164',
+          'gateway'
+        ])
+        && isNonEmptyString(data.name)
+        && isNonEmptyString(data.joinCode)
+        && isNonEmptyString(data.seniorName)
+        && isNonEmptyString(data.seniorPhoneE164)
+        && data.allowListE164 is list
+        && validGatewayMap(data.gateway);
+    }
+
+    function validMemberProfile(data) {
+      return isNonEmptyString(data.displayName)
+        && data.smsNickname is string
+        && data.lastActiveAt is timestamp;
+    }
+
+    function hasOnlyMessageKeys(data) {
+      return data.keys().hasOnly([
+        'direction',
+        'senderUid',
+        'senderName',
+        'text',
+        'smsFormattedText',
+        'encoding',
+        'segmentCount',
+        'status',
+        'retryCount',
+        'errorCode',
+        'errorReason',
+        'retryOfMessageId',
+        'createdAt',
+        'queuedOnGatewayAt',
+        'sentAt',
+        'deliveredAt',
+        'statusUpdatedAt',
+        'gatewayNetworkAtSend'
+      ]);
+    }
+
+    function validErrorCode(val) {
+      return val == null || val in ['NO_SERVICE', 'RADIO_OFF', 'GENERIC_FAILURE', 'INVALID_NUMBER'];
+    }
+
+    function validDeliveryMetadata(data) {
+      return (!('retryCount' in data) || (data.retryCount is int && data.retryCount >= 0))
+        && (!('errorCode' in data) || validErrorCode(data.errorCode))
+        && (!('errorReason' in data) || isNullableString(data.errorReason))
+        && (!('queuedOnGatewayAt' in data) || isNullableTimestamp(data.queuedOnGatewayAt))
+        && (!('sentAt' in data) || isNullableTimestamp(data.sentAt))
+        && (!('deliveredAt' in data) || isNullableTimestamp(data.deliveredAt))
+        && data.statusUpdatedAt is timestamp
+        && (!('gatewayNetworkAtSend' in data) || data.gatewayNetworkAtSend == null || data.gatewayNetworkAtSend in ['WIFI', 'CELLULAR']);
+    }
+
+    function validRetryReference(familyId, data) {
+      return !('retryOfMessageId' in data)
+        || data.retryOfMessageId == null
+        || (
+          isNonEmptyString(data.retryOfMessageId)
+          && exists(/databases/$(database)/documents/families/$(familyId)/messages/$(data.retryOfMessageId))
+          && get(/databases/$(database)/documents/families/$(familyId)/messages/$(data.retryOfMessageId)).data.status == 'FAILED'
+        );
+    }
+
+    function validOutboundBase(familyId, data) {
+      return hasOnlyMessageKeys(data)
+        && data.direction == 'OUTBOUND'
+        && data.senderUid == request.auth.uid
+        && isNonEmptyString(data.senderName)
+        && isNonEmptyString(data.text)
+        && isNonEmptyString(data.smsFormattedText)
+        && data.encoding in ['GSM-7', 'UCS-2']
+        && data.segmentCount is int && data.segmentCount >= 1
+        && data.createdAt is timestamp
+        && validRetryReference(familyId, data);
+    }
+
+    function validMemberOutboundCreate(familyId, data) {
+      return validOutboundBase(familyId, data)
+        && data.status == 'QUEUED'
+        && data.retryCount == 0
+        && (!('errorCode' in data) || data.errorCode == null)
+        && (!('errorReason' in data) || data.errorReason == null)
+        && (!('queuedOnGatewayAt' in data) || data.queuedOnGatewayAt == null)
+        && (!('sentAt' in data) || data.sentAt == null)
+        && (!('deliveredAt' in data) || data.deliveredAt == null)
+        && data.statusUpdatedAt is timestamp
+        && (!('gatewayNetworkAtSend' in data) || data.gatewayNetworkAtSend == null);
+    }
+
+    function validGatewayOutboundCreate(familyId, data) {
+      return validOutboundBase(familyId, data)
+        && data.status in ['QUEUED', 'SENT', 'PENDING', 'DELIVERED', 'FAILED']
+        && validDeliveryMetadata(data);
+    }
+
+    function validInboundCreate(data) {
+      return hasOnlyMessageKeys(data)
+        && data.direction == 'INBOUND'
+        && data.senderUid == 'senior'
+        && isNonEmptyString(data.senderName)
+        && isNonEmptyString(data.text)
+        && (!('smsFormattedText' in data) || isNullableString(data.smsFormattedText))
+        && data.encoding in ['GSM-7', 'UCS-2']
+        && data.segmentCount is int && data.segmentCount >= 1
+        && data.status == 'DELIVERED'
+        && (!('retryOfMessageId' in data) || data.retryOfMessageId == null)
+        && data.createdAt is timestamp
+        && validDeliveryMetadata(data);
+    }
+
+    function validStatusTransition(direction, prevStatus, nextStatus) {
+      return nextStatus == prevStatus
+        || (
+          direction == 'OUTBOUND'
+          && (
+            (prevStatus == 'QUEUED' && nextStatus in ['SENT', 'PENDING', 'DELIVERED', 'FAILED'])
+            || (prevStatus == 'SENT' && nextStatus in ['PENDING', 'DELIVERED', 'FAILED'])
+            || (prevStatus == 'PENDING' && nextStatus in ['DELIVERED', 'FAILED'])
+          )
+        );
+    }
+
+    function validGatewayMessageUpdate(data, prev) {
+      return hasOnlyMessageKeys(data)
+        && data.diff(prev).affectedKeys().hasOnly([
+          'status',
+          'retryCount',
+          'errorCode',
+          'errorReason',
+          'queuedOnGatewayAt',
+          'sentAt',
+          'deliveredAt',
+          'statusUpdatedAt',
+          'gatewayNetworkAtSend'
+        ])
+        && data.status in ['QUEUED', 'SENT', 'PENDING', 'DELIVERED', 'FAILED']
+        && validStatusTransition(prev.direction, prev.status, data.status)
+        && validDeliveryMetadata(data);
+    }
+
+    match /joinCodes/{joinCode} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['familyId'])
+        && isNonEmptyString(request.resource.data.familyId)
+        && isFamilyGatewayAfter(request.resource.data.familyId)
+        && familyDocAfter(request.resource.data.familyId).data.joinCode == joinCode;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /families/{familyId} {
+      allow get: if isSignedIn() && (isFamilyMember(familyId) || resource.data.gateway.uid == request.auth.uid);
+      allow list: if false;
+      allow create: if isSignedIn()
+        && validFamilyData(request.resource.data)
+        && request.resource.data.gateway.uid == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.gateway.uid == request.auth.uid
+        && validFamilyData(request.resource.data)
+        && request.resource.data.gateway.uid == resource.data.gateway.uid
+        && request.resource.data.joinCode == resource.data.joinCode;
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow get: if isSignedIn() && (request.auth.uid == uid || isFamilyParticipant(familyId));
+        allow list: if isFamilyParticipant(familyId);
+        allow create: if isSignedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['displayName', 'smsNickname', 'role', 'lastActiveAt', 'joinedAt'])
+          && validMemberProfile(request.resource.data)
+          && request.resource.data.joinedAt is timestamp
+          && (
+            (request.resource.data.role == 'MEMBER' && familyExists(familyId))
+            || (request.resource.data.role == 'GATEWAY' && isFamilyGatewayAfter(familyId))
+          );
+        allow update: if isSignedIn()
+          && request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.joinedAt == resource.data.joinedAt
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'smsNickname', 'lastActiveAt'])
+          && validMemberProfile(request.resource.data);
+        allow delete: if false;
+      }
+
+      match /messages/{messageId} {
+        allow read: if isFamilyParticipant(familyId);
+        allow create: if isSignedIn() && (
+          (isFamilyMember(familyId) && validMemberOutboundCreate(familyId, request.resource.data))
+          || (isFamilyGateway(familyId) && validGatewayOutboundCreate(familyId, request.resource.data))
+          || (isFamilyGateway(familyId) && validInboundCreate(request.resource.data))
+        );
+        allow update: if isFamilyGateway(familyId)
+          && validGatewayMessageUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
