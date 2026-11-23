@@ -4,6 +4,7 @@ import type {
   ChatMessageDoc,
   FamilyMemberDoc,
   GatewayHealth,
+  MemberCreateWrite,
   OutboundMessageWrite,
   SenderContext,
 } from "./types";
@@ -26,7 +27,7 @@ export interface GatewayStore {
   createMember(
     familyId: string,
     uid: string,
-    data: { displayName: string; smsNickname: string; joinCode: string }
+    data: MemberCreateWrite
   ): Promise<void>;
   updateMemberProfile(
     familyId: string,

@@ -14,6 +14,7 @@ import type {
   ChatMessageDoc,
   FamilyMemberDoc,
   GatewayHealth,
+  MemberCreateWrite,
   OutboundMessageWrite,
 } from "../src/lib/types";
 
@@ -29,13 +30,9 @@ function makeFakeDeps(options?: {
     messageId: string;
     payload: OutboundMessageWrite;
   }> = [];
-  const createdMembers: Array<{
-    familyId: string;
-    uid: string;
-    displayName: string;
-    smsNickname: string;
-    joinCode: string;
-  }> = [];
+  const createdMembers: Array<
+    MemberCreateWrite & { familyId: string; uid: string }
+  > = [];
   const updatedMembers: Array<{
     familyId: string;
     uid: string;
