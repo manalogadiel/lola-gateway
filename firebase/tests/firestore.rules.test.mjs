@@ -207,7 +207,7 @@ describe("joinCodes/{joinCode}", () => {
     await assertFails(getDocs(collection(db, "joinCodes")));
   });
 
-  it("allows the gateway host to create a family and matching join code in a batch", async () => {
+  it("allows the gateway host (Android createFamily shape) to create a family, joinCode, and 5-field GATEWAY member without joinCode", async () => {
     const newHostUid = "uid-new-host";
     const newFamilyId = "fam-new";
     const newCode = "LOLA-9911";
@@ -227,7 +227,7 @@ describe("joinCodes/{joinCode}", () => {
     batch.set(doc(db, "joinCodes", newCode), { familyId: newFamilyId });
     batch.set(
       doc(db, "families", newFamilyId, "members", newHostUid),
-      makeMemberDoc("GATEWAY", "New Host", "Host")
+      makeMemberDoc("GATEWAY", "New Host", "")
     );
 
     await assertSucceeds(batch.commit());
@@ -366,6 +366,30 @@ describe("families/{familyId}/members/{uid}", () => {
       setDoc(
         outsiderRef,
         makeMemberDoc("MEMBER", "Random Outsider", "Rand", "")
+      )
+    );
+  });
+
+  it("allows an existing pre-fix member without joinCode on their member doc to continue using the app", async () => {
+    const db = testEnv.authenticatedContext(MEMBER_UID).firestore();
+    const memberRef = doc(db, "families", FAMILY_ID, "members", MEMBER_UID);
+
+    const familySnap = await assertSucceeds(
+      getDoc(doc(db, "families", FAMILY_ID))
+    );
+    assert.equal(familySnap.data().joinCode, JOIN_CODE);
+
+    await assertSucceeds(
+      updateDoc(memberRef, {
+        smsNickname: "Basty",
+        lastActiveAt: timestampAt(1_500_000),
+      })
+    );
+
+    await assertSucceeds(
+      setDoc(
+        doc(db, "families", FAMILY_ID, "messages", "msg-existing-member"),
+        makeOutboundMessage(MEMBER_UID)
       )
     );
   });

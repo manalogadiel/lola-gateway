@@ -158,6 +158,7 @@ Interactive 6-screen wireframe reference: [`docs/ui/lola-gateway-wireframes.html
    - `displayName`: string
    - `smsNickname`: string (short prefix sent in SMS, e.g., `"Gadiel"`)
    - `role`: `"GATEWAY" | "MEMBER"` (Gateway host owns family/allow-list configuration)
+   - `joinCode`: string (required when creating a `MEMBER` doc; must match `families/{familyId}.joinCode` and is immutable after creation; omitted on `GATEWAY` host docs)
    - `lastActiveAt`: Timestamp (updated on app open or message send; avoids persistent presence sockets)
    - `joinedAt`: Timestamp
 3. `families/{familyId}/messages/{messageId}`
@@ -220,6 +221,10 @@ Interactive 6-screen wireframe reference: [`docs/ui/lola-gateway-wireframes.html
 - Default deny all.
 - `joinCodes/{code}`: authenticated users can `get` (not `list`) a specific code to resolve `familyId`.
 - `families/{familyId}`: readable by verified `members/{request.auth.uid}`; writable (`gateway` fields, `allowListE164`, `seniorPhoneE164`, `seniorName`, `name`) strictly by `families/{familyId}.gateway.uid`.
+- `families/{familyId}/members/{uid}`:
+  - `create` (`MEMBER`): authenticated user (`request.auth.uid == uid`) must include `joinCode` matching `families/{familyId}.joinCode`.
+  - `create` (`GATEWAY`): strictly restricted to `families/{familyId}.gateway.uid` (no `joinCode` field required).
+  - `update`: own doc only (`displayName`, `smsNickname`, `lastActiveAt`); `role`, `joinedAt`, and `joinCode` stay immutable.
 - `families/{familyId}/messages/{messageId}`:
   - `read`: any verified family member.
   - `create` (`OUTBOUND`): any verified family member where `senderUid == request.auth.uid` and `status == "QUEUED"`.
