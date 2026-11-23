@@ -33,6 +33,6 @@ class AndroidSmsTransport(private val context: Context) : SmsTransport {
             .setData(Uri.Builder().scheme("lolagateway").authority("sms").appendPath(messageId)
                 .appendPath(attempt.toString()).appendPath(part.toString()).build())
         val mutability = if (action == SmsStatusReceiver.DELIVERED) PendingIntent.FLAG_MUTABLE else PendingIntent.FLAG_IMMUTABLE
-        return PendingIntent.getBroadcast(context, messageId.hashCode() * 31 + part, intent, mutability)
+        return PendingIntent.getBroadcast(context, (messageId.hashCode() * 31 + attempt) * 31 + part, intent, mutability or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 }

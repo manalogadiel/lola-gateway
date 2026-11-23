@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.telephony.SubscriptionManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -168,6 +169,7 @@ class MainActivity : ComponentActivity() {
         }
         val membersFlow = remember(profile.familyId) { requireNotNull(container.cloud).observeMembers(profile.familyId) }
         val members by membersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+        BackHandler(enabled = tab != GatewayTab.HOME) { tab = GatewayTab.HOME }
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { IconBottomDock(tab) { tab = it } }) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (tab) {
@@ -190,7 +192,17 @@ class MainActivity : ComponentActivity() {
                         setPaused = toggle,
                         setTheme = { scope.launch { container.prefs.setTheme(it) } },
                         selectSim = { scope.launch { container.prefs.selectSim(it) } }, grant = grant,
-                        battery = { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
+                        battery = {
+                            try {
+                                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                            } catch (_: Exception) {
+                                try {
+                                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                                } catch (_: Exception) {
+                                    Toast.makeText(this@MainActivity, "Battery optimization settings unavailable", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
                         diagnostics = { showDiagnostics = true }, signOut = {
                             scope.launch {
                                 container.auth?.signOut()

@@ -1,6 +1,7 @@
 # Secrets & credentials (never commit to public repo)
 .env
 .env.*
+env.download
 .dev.vars
 *service-account*.json
 *serviceAccount*.json
@@ -29,3 +30,4 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+Pakonek_*.pdf

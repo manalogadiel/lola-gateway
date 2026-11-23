@@ -5,7 +5,7 @@ import org.junit.Test
 
 class CoreDomainTest {
     @Test fun normalizesPhilippineMobileFormats() {
-        listOf("0917-123-4567", "9171234567", "639171234567", "+63 917 123 4567").forEach {
+        listOf("0917-123-4567", "9171234567", "639171234567", "+63 917 123 4567", "+6309171234567", "+63 0917 123 4567").forEach {
             assertEquals("+639171234567", PhoneNormalizer.toPhE164(it))
         }
         listOf("12345", "abc", "+1 917 123 4567").forEach { assertNull(PhoneNormalizer.toPhE164(it)) }
