@@ -190,7 +190,7 @@ class MainActivity : ComponentActivity() {
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = { if (tab != GatewayTab.CHAT) IconBottomDock(tab) { tab = it } },
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
+            Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
                 when (tab) {
                     GatewayTab.HOME -> HomeScreen(profile, members, prefs.paused, status, maySend, copyCode,
                         { tab = GatewayTab.CHAT }, { tab = GatewayTab.PEOPLE }, grant, { toggle(!prefs.paused) })
