@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { maskPhoneE164 } from "../src/lib/formatters";
 import {
   GATEWAY_STALE_MS,
+  backfillFamilyPointerIfMissing,
   deriveGatewayDisplayState,
   isGatewayStale,
   joinFamilyByCode,
   notifyWorkerPush,
+  resolveInitialFamilyId,
   retryFailedMessage,
   sendOutboundMessage,
   type GatewayApiDeps,
@@ -21,6 +23,8 @@ import type {
 function makeFakeDeps(options?: {
   joinCodes?: Record<string, string>;
   existingMembers?: Record<string, FamilyMemberDoc>;
+  userPointers?: Record<string, string>;
+  failPointerRead?: boolean;
   failNotify?: boolean;
   ids?: string[];
   nowMs?: number;
@@ -38,6 +42,8 @@ function makeFakeDeps(options?: {
     uid: string;
     updates: { smsNickname?: string; lastActiveMs: number };
   }> = [];
+  const rejoinedMembers: typeof updatedMembers = [];
+  const pointerReads: string[] = [];
   const notifyCalls: Array<{
     familyId: string;
     messageId: string;
@@ -49,6 +55,7 @@ function makeFakeDeps(options?: {
   ];
   const joinCodes = options?.joinCodes ?? { "LOLA-4821": "fam-manalo" };
   const existingMembers = options?.existingMembers ?? {};
+  const userPointers = new Map(Object.entries(options?.userPointers ?? {}));
 
   const deps: GatewayApiDeps = {
     now: () => options?.nowMs ?? 1_795_300_000_000,
@@ -57,8 +64,30 @@ function makeFakeDeps(options?: {
     store: {
       resolveJoinCode: async (code) => joinCodes[code] ?? null,
       getMember: async (_familyId, uid) => existingMembers[uid] ?? null,
-      createMember: async (familyId, uid, data) => {
+      getUserFamilyPointer: async (uid) => {
+        pointerReads.push(uid);
+        if (options?.failPointerRead) {
+          throw new Error("Could not read pointer");
+        }
+        return userPointers.get(uid) ?? null;
+      },
+      createUserFamilyPointerIfAbsent: async (uid, familyId) => {
+        if (userPointers.has(uid)) {
+          return false;
+        }
+        userPointers.set(uid, familyId);
+        return true;
+      },
+      deleteUserFamilyPointer: async (uid) => {
+        userPointers.delete(uid);
+      },
+      createMemberWithPointer: async (familyId, uid, data) => {
         createdMembers.push({ familyId, uid, ...data });
+        userPointers.set(uid, familyId);
+      },
+      rejoinMemberWithPointer: async (familyId, uid, updates) => {
+        rejoinedMembers.push({ familyId, uid, updates });
+        userPointers.set(uid, familyId);
       },
       updateMemberProfile: async (familyId, uid, updates) => {
         updatedMembers.push({ familyId, uid, updates });
@@ -81,6 +110,9 @@ function makeFakeDeps(options?: {
     createdMessages,
     createdMembers,
     updatedMembers,
+    rejoinedMembers,
+    pointerReads,
+    userPointers,
     notifyCalls,
   };
 }
@@ -319,8 +351,8 @@ describe("sendOutboundMessage and retryFailedMessage", () => {
 });
 
 describe("joinFamilyByCode and maskPhoneE164", () => {
-  it("normalizes join code, creates a new MEMBER with default first-name SMS nickname", async () => {
-    const { deps, createdMembers } = makeFakeDeps();
+  it("normalizes the code and atomically creates a MEMBER with a default nickname and pointer", async () => {
+    const { deps, createdMembers, rejoinedMembers, userPointers } = makeFakeDeps();
 
     const familyId = await joinFamilyByCode(
       " lola-4821 ",
@@ -339,10 +371,12 @@ describe("joinFamilyByCode and maskPhoneE164", () => {
         joinCode: "LOLA-4821",
       },
     ]);
+    expect(rejoinedMembers).toEqual([]);
+    expect(userPointers.get("uid-seb")).toBe("fam-manalo");
   });
 
-  it("updates lastActiveAt instead of recreating when a returning member re-joins", async () => {
-    const { deps, createdMembers, updatedMembers } = makeFakeDeps({
+  it.each(["", "  Sebby  "])("atomically updates a returning member and saves their pointer (nickname: %j)", async (nickname) => {
+    const { deps, createdMembers, updatedMembers, rejoinedMembers, userPointers } = makeFakeDeps({
       existingMembers: {
         "uid-seb": {
           uid: "uid-seb",
@@ -358,14 +392,24 @@ describe("joinFamilyByCode and maskPhoneE164", () => {
     const familyId = await joinFamilyByCode(
       "LOLA-4821",
       { uid: "uid-seb", displayName: "Sebastian Bueno" },
-      "",
+      nickname,
       deps
     );
 
     expect(familyId).toBe("fam-manalo");
     expect(createdMembers).toHaveLength(0);
-    expect(updatedMembers).toHaveLength(1);
-    expect(updatedMembers[0].updates.smsNickname).toBeUndefined();
+    expect(updatedMembers).toHaveLength(0);
+    expect(rejoinedMembers).toEqual([
+      {
+        familyId: "fam-manalo",
+        uid: "uid-seb",
+        updates: {
+          lastActiveMs: 1_795_300_000_000,
+          ...(nickname ? { smsNickname: "Sebby" } : {}),
+        },
+      },
+    ]);
+    expect(userPointers.get("uid-seb")).toBe("fam-manalo");
   });
 
   it("throws a clear error on unknown join code and formats masked PH numbers", async () => {
@@ -380,5 +424,69 @@ describe("joinFamilyByCode and maskPhoneE164", () => {
     ).rejects.toThrow("Family code not found");
 
     expect(maskPhoneE164("+639171234567")).toBe("+63 917 *** 4567");
+  });
+});
+
+describe("resolveInitialFamilyId", () => {
+  const uid = "uid-seb";
+  const pointerFamilyId = "fam-manalo";
+
+  it("recovers a pointer on a fresh browser and caches it for that account", async () => {
+    const { deps, pointerReads } = makeFakeDeps({ userPointers: { [uid]: pointerFamilyId } });
+    const localStorage = new Map<string, string>();
+
+    await expect(resolveInitialFamilyId(
+      uid,
+      (key) => localStorage.get(key) ?? null,
+      (key, familyId) => localStorage.set(key, familyId),
+      deps.store
+    )).resolves.toEqual({ familyId: pointerFamilyId, source: "pointer" });
+    expect(pointerReads).toEqual([uid]);
+    expect(localStorage).toEqual(new Map([[uid, pointerFamilyId]]));
+  });
+
+  it("uses the cached family without reading or rewriting a pointer", async () => {
+    const { deps, pointerReads } = makeFakeDeps({ userPointers: { [uid]: pointerFamilyId } });
+    const localStorage = new Map([[uid, "fam-cached"]]);
+
+    await expect(resolveInitialFamilyId(
+      uid,
+      (key) => localStorage.get(key) ?? null,
+      (key, familyId) => localStorage.set(key, familyId),
+      deps.store
+    )).resolves.toEqual({ familyId: "fam-cached", source: "storage" });
+    expect(pointerReads).toHaveLength(0);
+    expect(localStorage.get(uid)).toBe("fam-cached");
+  });
+
+  it.each([
+    { label: "missing" },
+    { label: "empty", userPointers: { [uid]: "" } },
+    { label: "unreadable", failPointerRead: true },
+  ])("returns no family for a $label pointer", async (options) => {
+    const { deps, pointerReads } = makeFakeDeps(options);
+    const localStorage = new Map<string, string>();
+
+    await expect(resolveInitialFamilyId(
+      uid,
+      () => null,
+      (key, familyId) => localStorage.set(key, familyId),
+      deps.store
+    )).resolves.toEqual({ familyId: null, source: "none" });
+    expect(pointerReads).toEqual([uid]);
+    expect(localStorage.size).toBe(0);
+  });
+});
+
+describe("backfillFamilyPointerIfMissing", () => {
+  const uid = "uid-seb";
+
+  it("saves the verified family only when no pointer exists", async () => {
+    const { deps, userPointers } = makeFakeDeps();
+
+    await expect(backfillFamilyPointerIfMissing(uid, "fam-manalo", deps.store)).resolves.toBe(true);
+    expect(userPointers.get(uid)).toBe("fam-manalo");
+    await expect(backfillFamilyPointerIfMissing(uid, "fam-other", deps.store)).resolves.toBe(false);
+    expect(userPointers.get(uid)).toBe("fam-manalo");
   });
 });
