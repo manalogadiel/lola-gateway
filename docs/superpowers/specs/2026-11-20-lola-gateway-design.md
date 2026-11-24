@@ -183,6 +183,11 @@ Interactive 6-screen wireframe reference: [`docs/ui/lola-gateway-wireframes.html
    - `deliveredAt`: Timestamp?
    - `statusUpdatedAt`: Timestamp
    - `gatewayNetworkAtSend`: `"WIFI" | "CELLULAR"`?
+4. `users/{uid}` -> `{ familyId, updatedAt }`
+   - One family pointer per Firebase Auth account; both fields are required and no additional fields are allowed.
+   - `familyId`: non-empty string identifying the family to recover when local storage is empty.
+   - `updatedAt`: Timestamp, set by the server when web chat saves the pointer.
+   - Web chat saves the pointer in the same batch as joining or rejoining. Existing members backfill after their cached family is verified, without overwriting an existing pointer. Members who cleared their storage before a pointer was saved enter the join code once to establish it. Android Gateway recovery is a follow-up.
 
 ### 6.3 Cloudflare Worker Push Trigger (`worker/`)
 - **Endpoint:** `POST /notify` with `Authorization: Bearer <Firebase ID Token>` and JSON body `{ "familyId": "...", "messageId": "..." }`.
@@ -220,6 +225,9 @@ Interactive 6-screen wireframe reference: [`docs/ui/lola-gateway-wireframes.html
 ### 6.7 Firestore Security Rules (`firebase/firestore.rules`)
 - Default deny all.
 - `joinCodes/{code}`: authenticated users can `get` (not `list`) a specific code to resolve `familyId`.
+- `users/{uid}`: only the signed-in owner (`request.auth.uid == uid`) can `get`, `create`, `update`, or `delete` their pointer; `list` is denied.
+  - `create` and `update` require exactly `['familyId', 'updatedAt']`, a non-empty string `familyId`, and a timestamp `updatedAt`.
+  - `isFamilyParticipantAfter(familyId)` verifies membership or Gateway ownership after the write, allowing a join or future Android Gateway setup to include the pointer in the same batch. The pointer itself does not grant family access.
 - `families/{familyId}`: readable by verified `members/{request.auth.uid}`; writable (`gateway` fields, `allowListE164`, `seniorPhoneE164`, `seniorName`, `name`) strictly by `families/{familyId}.gateway.uid`.
 - `families/{familyId}/members/{uid}`:
   - `create` (`MEMBER`): authenticated user (`request.auth.uid == uid`) must include `joinCode` matching `families/{familyId}.joinCode`.

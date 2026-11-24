@@ -10,16 +10,19 @@ import {
 } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getFirestore,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
+  writeBatch,
   type DocumentData,
   type Firestore,
   type Unsubscribe,
@@ -228,12 +231,40 @@ export function createFirestoreGatewayStore(db: Firestore): GatewayStore {
       return parseMemberDoc(uid, snap.data());
     },
 
-    async createMember(
+    async getUserFamilyPointer(uid: string): Promise<string | null> {
+      const snap = await getDoc(doc(db, "users", uid));
+      const familyId = snap.data()?.familyId;
+      return typeof familyId === "string" && familyId.length > 0
+        ? familyId
+        : null;
+    },
+
+    async createUserFamilyPointerIfAbsent(
+      uid: string,
+      familyId: string
+    ): Promise<boolean> {
+      const ref = doc(db, "users", uid);
+      return runTransaction(db, async (tx) => {
+        const existing = await tx.get(ref);
+        if (existing.exists()) {
+          return false;
+        }
+        tx.set(ref, { familyId, updatedAt: serverTimestamp() });
+        return true;
+      });
+    },
+
+    async deleteUserFamilyPointer(uid: string): Promise<void> {
+      await deleteDoc(doc(db, "users", uid));
+    },
+
+    async createMemberWithPointer(
       familyId: string,
       uid: string,
       data: MemberCreateWrite
     ): Promise<void> {
-      await setDoc(doc(db, "families", familyId, "members", uid), {
+      const batch = writeBatch(db);
+      batch.set(doc(db, "families", familyId, "members", uid), {
         displayName: data.displayName,
         smsNickname: data.smsNickname,
         role: "MEMBER",
@@ -241,6 +272,22 @@ export function createFirestoreGatewayStore(db: Firestore): GatewayStore {
         joinedAt: serverTimestamp(),
         lastActiveAt: serverTimestamp(),
       });
+      batch.set(doc(db, "users", uid), { familyId, updatedAt: serverTimestamp() });
+      await batch.commit();
+    },
+
+    async rejoinMemberWithPointer(
+      familyId: string,
+      uid: string,
+      updates: { smsNickname?: string; lastActiveMs: number }
+    ): Promise<void> {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "families", familyId, "members", uid), {
+        lastActiveAt: Timestamp.fromMillis(updates.lastActiveMs),
+        ...(updates.smsNickname !== undefined ? { smsNickname: updates.smsNickname } : {}),
+      });
+      batch.set(doc(db, "users", uid), { familyId, updatedAt: serverTimestamp() });
+      await batch.commit();
     },
 
     async updateMemberProfile(

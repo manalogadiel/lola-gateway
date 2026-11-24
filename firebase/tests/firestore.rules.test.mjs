@@ -19,6 +19,7 @@ import {
   query,
   where,
   orderBy,
+  serverTimestamp,
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
@@ -249,6 +250,177 @@ describe("joinCodes/{joinCode}", () => {
         familyId: "other-fam",
       })
     );
+  });
+});
+
+describe("users/{uid}", () => {
+  const pointer = () => ({ familyId: FAMILY_ID, updatedAt: serverTimestamp() });
+
+  async function seedPointer(uid) {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "users", uid), pointer());
+    });
+  }
+
+  it("denies unauthenticated get, list, create, update, and delete", async () => {
+    await seedPointer(MEMBER_UID);
+    const db = testEnv.unauthenticatedContext().firestore();
+    const ref = doc(db, "users", MEMBER_UID);
+
+    await assertFails(getDoc(ref));
+    await assertFails(getDocs(collection(db, "users")));
+    await assertFails(setDoc(doc(db, "users", OTHER_MEMBER_UID), pointer()));
+    await assertFails(updateDoc(ref, { updatedAt: serverTimestamp() }));
+    await assertFails(deleteDoc(ref));
+  });
+
+  for (const uid of [MEMBER_UID, GATEWAY_UID]) {
+    it(`allows ${uid} to create, get, update, and delete their own pointer`, async () => {
+      const db = testEnv.authenticatedContext(uid).firestore();
+      const ref = doc(db, "users", uid);
+
+      await assertSucceeds(setDoc(ref, pointer()));
+      const created = await assertSucceeds(getDoc(ref));
+      assert.equal(created.data().familyId, FAMILY_ID);
+      assert.ok(created.data().updatedAt instanceof Timestamp);
+
+      await assertSucceeds(updateDoc(ref, { updatedAt: timestampAt(1) }));
+      const updated = await assertSucceeds(getDoc(ref));
+      assert.equal(updated.data().updatedAt.toMillis(), timestampAt(1).toMillis());
+
+      await assertSucceeds(deleteDoc(ref));
+      assert.equal((await assertSucceeds(getDoc(ref))).exists(), false);
+    });
+  }
+
+  it("allows a new member to join and save their pointer in one batch", async () => {
+    const uid = OTHER_MEMBER_UID;
+    const db = testEnv.authenticatedContext(uid).firestore();
+    const memberRef = doc(db, "families", FAMILY_ID, "members", uid);
+    const pointerRef = doc(db, "users", uid);
+    const batch = writeBatch(db);
+    batch.set(memberRef, makeMemberDoc("MEMBER", "Marites", "Tess", JOIN_CODE));
+    batch.set(pointerRef, pointer());
+
+    await assertSucceeds(batch.commit());
+    assert.equal((await assertSucceeds(getDoc(memberRef))).data().role, "MEMBER");
+    assert.equal((await assertSucceeds(getDoc(pointerRef))).data().familyId, FAMILY_ID);
+  });
+
+  it("allows a returning member to update their profile and save a pointer in one batch", async () => {
+    const db = testEnv.authenticatedContext(MEMBER_UID).firestore();
+    const memberRef = doc(db, "families", FAMILY_ID, "members", MEMBER_UID);
+    const pointerRef = doc(db, "users", MEMBER_UID);
+    const batch = writeBatch(db);
+    batch.update(memberRef, { smsNickname: "Sebby", lastActiveAt: timestampAt(1) });
+    batch.set(pointerRef, pointer());
+
+    await assertSucceeds(batch.commit());
+    assert.equal((await assertSucceeds(getDoc(memberRef))).data().smsNickname, "Sebby");
+    assert.equal((await assertSucceeds(getDoc(pointerRef))).data().familyId, FAMILY_ID);
+  });
+
+  it("allows a new Gateway host to create a family, join code, member, and pointer in one batch", async () => {
+    const hostUid = "uid-new-host";
+    const familyId = "fam-new";
+    const joinCode = "LOLA-9911";
+    const db = testEnv.authenticatedContext(hostUid).firestore();
+    const pointerRef = doc(db, "users", hostUid);
+    const batch = writeBatch(db);
+    batch.set(
+      doc(db, "families", familyId),
+      makeFamilyDoc({
+        joinCode,
+        gateway: { ...makeFamilyDoc().gateway, uid: hostUid },
+      })
+    );
+    batch.set(doc(db, "joinCodes", joinCode), { familyId });
+    batch.set(
+      doc(db, "families", familyId, "members", hostUid),
+      makeMemberDoc("GATEWAY", "New Host", "")
+    );
+    batch.set(pointerRef, { familyId, updatedAt: serverTimestamp() });
+
+    await assertSucceeds(batch.commit());
+    assert.equal((await assertSucceeds(getDoc(pointerRef))).data().familyId, familyId);
+  });
+
+  it("allows a Gateway host without a member document to save their own pointer", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await deleteDoc(doc(ctx.firestore(), "families", FAMILY_ID, "members", GATEWAY_UID));
+    });
+    const db = testEnv.authenticatedContext(GATEWAY_UID).firestore();
+    await assertSucceeds(setDoc(doc(db, "users", GATEWAY_UID), pointer()));
+  });
+
+  for (const [callerUid, targetUid] of [
+    [MEMBER_UID, OTHER_MEMBER_UID],
+    [MEMBER_UID, GATEWAY_UID],
+    [GATEWAY_UID, MEMBER_UID],
+  ]) {
+    it(`denies ${callerUid} access to ${targetUid}'s pointer`, async () => {
+      const db = testEnv.authenticatedContext(callerUid).firestore();
+      const ref = doc(db, "users", targetUid);
+      await assertFails(setDoc(ref, pointer()));
+
+      await seedPointer(targetUid);
+      await assertFails(getDoc(ref));
+      await assertFails(updateDoc(ref, { updatedAt: serverTimestamp() }));
+      await assertFails(deleteDoc(ref));
+    });
+  }
+
+  it("denies listing pointers for all signed-in roles", async () => {
+    for (const uid of [MEMBER_UID, OTHER_MEMBER_UID, GATEWAY_UID, OUTSIDER_UID]) {
+      const db = testEnv.authenticatedContext(uid).firestore();
+      await assertFails(getDocs(collection(db, "users")));
+    }
+  });
+
+  it("denies saving a pointer before joining or in a batch with a wrong join code", async () => {
+    const db = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
+    const pointerRef = doc(db, "users", OUTSIDER_UID);
+    const memberRef = doc(db, "families", FAMILY_ID, "members", OUTSIDER_UID);
+    await assertFails(setDoc(pointerRef, pointer()));
+
+    const batch = writeBatch(db);
+    batch.set(memberRef, makeMemberDoc("MEMBER", "Outsider", "Outsider", "WRONG"));
+    batch.set(pointerRef, pointer());
+    await assertFails(batch.commit());
+    assert.equal((await assertSucceeds(getDoc(pointerRef))).exists(), false);
+    assert.equal((await assertSucceeds(getDoc(memberRef))).exists(), false);
+  });
+
+  it("denies switching a pointer to an unjoined or nonexistent family", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "families", "fam-other"), makeFamilyDoc({ joinCode: "LOLA-2200" }));
+    });
+    await seedPointer(MEMBER_UID);
+    const db = testEnv.authenticatedContext(MEMBER_UID).firestore();
+    const ref = doc(db, "users", MEMBER_UID);
+
+    await assertFails(updateDoc(ref, { familyId: "fam-other" }));
+    await assertFails(updateDoc(ref, { familyId: "fam-ghost" }));
+  });
+
+  it("denies invalid pointer payloads on create and update", async () => {
+    const db = testEnv.authenticatedContext(MEMBER_UID).firestore();
+    const ref = doc(db, "users", MEMBER_UID);
+    const invalidPointers = [
+      { updatedAt: timestampAt() },
+      { familyId: FAMILY_ID },
+      { ...pointer(), familyId: "" },
+      { ...pointer(), updatedAt: BASE_EPOCH_MS },
+      { ...pointer(), extra: true },
+    ];
+
+    for (const invalid of invalidPointers) {
+      await assertFails(setDoc(ref, invalid));
+    }
+    await assertSucceeds(setDoc(ref, pointer()));
+    for (const invalid of invalidPointers) {
+      await assertFails(setDoc(ref, invalid));
+    }
   });
 });
 

@@ -24,10 +24,18 @@ export interface GatewayDisplayState {
 export interface GatewayStore {
   resolveJoinCode(code: string): Promise<string | null>;
   getMember(familyId: string, uid: string): Promise<FamilyMemberDoc | null>;
-  createMember(
+  getUserFamilyPointer(uid: string): Promise<string | null>;
+  createUserFamilyPointerIfAbsent(uid: string, familyId: string): Promise<boolean>;
+  deleteUserFamilyPointer(uid: string): Promise<void>;
+  createMemberWithPointer(
     familyId: string,
     uid: string,
     data: MemberCreateWrite
+  ): Promise<void>;
+  rejoinMemberWithPointer(
+    familyId: string,
+    uid: string,
+    updates: { smsNickname?: string; lastActiveMs: number }
   ): Promise<void>;
   updateMemberProfile(
     familyId: string,
@@ -115,6 +123,41 @@ export function deriveGatewayDisplayState(
 
 export function normalizeJoinCode(rawCode: string): string {
   return rawCode.trim().toUpperCase();
+}
+
+export async function resolveInitialFamilyId(
+  uid: string,
+  readLocal: (uid: string) => string | null,
+  writeLocal: (uid: string, familyId: string) => void,
+  store: Pick<GatewayStore, "getUserFamilyPointer">
+): Promise<
+  | { familyId: string; source: "storage" | "pointer" }
+  | { familyId: null; source: "none" }
+> {
+  const cached = readLocal(uid);
+  if (typeof cached === "string" && cached.length > 0) {
+    return { familyId: cached, source: "storage" };
+  }
+
+  let recovered: string | null;
+  try {
+    recovered = await store.getUserFamilyPointer(uid);
+  } catch {
+    recovered = null;
+  }
+  if (typeof recovered === "string" && recovered.length > 0) {
+    writeLocal(uid, recovered);
+    return { familyId: recovered, source: "pointer" };
+  }
+  return { familyId: null, source: "none" };
+}
+
+export function backfillFamilyPointerIfMissing(
+  uid: string,
+  verifiedFamilyId: string,
+  store: Pick<GatewayStore, "createUserFamilyPointerIfAbsent">
+): Promise<boolean> {
+  return store.createUserFamilyPointerIfAbsent(uid, verifiedFamilyId);
 }
 
 export async function notifyWorkerPush(
@@ -240,12 +283,12 @@ export async function joinFamilyByCode(
   const existing = await deps.store.getMember(familyId, user.uid);
 
   if (existing) {
-    await deps.store.updateMemberProfile(familyId, user.uid, {
+    await deps.store.rejoinMemberWithPointer(familyId, user.uid, {
       lastActiveMs: nowMs,
       ...(trimmedNickname ? { smsNickname: trimmedNickname } : {}),
     });
   } else {
-    await deps.store.createMember(familyId, user.uid, {
+    await deps.store.createMemberWithPointer(familyId, user.uid, {
       displayName: user.displayName || "Family Member",
       smsNickname: trimmedNickname || deriveDefaultNickname(user.displayName),
       joinCode: code,

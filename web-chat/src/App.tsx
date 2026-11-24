@@ -14,8 +14,10 @@ import {
 } from "./lib/firebase";
 import { deriveDefaultNickname, getMemberPrefix } from "./lib/formatters";
 import {
+  backfillFamilyPointerIfMissing,
   deriveGatewayDisplayState,
   joinFamilyByCode,
+  resolveInitialFamilyId,
   retryFailedMessage,
   sendOutboundMessage,
 } from "./lib/gatewayApi";
@@ -95,6 +97,10 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessageDoc[]>([]);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [syncingFamily, setSyncingFamily] = useState(false);
+  const [resolvingFamily, setResolvingFamily] = useState(false);
+  const familySourceRef = useRef<"none" | "storage" | "pointer" | "join">("none");
+  const backfilledKeyRef = useRef<string | null>(null);
+  const recoveryReqIdRef = useRef(0);
 
   const [activeView, setActiveView] = useState<AppView>("home");
   const [slideDirection, setSlideDirection] = useState<"forward" | "backward" | "push" | "pop">("forward");
@@ -143,25 +149,61 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!services) {
+    if (!services || !apiDeps) {
       return;
     }
-    return observeAuth(services.auth, (nextUser) => {
+    const unsubscribe = observeAuth(services.auth, (nextUser) => {
+      const requestId = ++recoveryReqIdRef.current;
+      familySourceRef.current = "none";
+      backfilledKeyRef.current = null;
       setUser(nextUser);
       setAuthReady(true);
-      if (nextUser) {
-        setFamilyId(readStoredFamilyId(nextUser.uid));
-      } else {
-        setFamilyId(null);
-        setFamily(null);
-        setMembers([]);
-        setMessages([]);
-        setMessagesLoaded(false);
-        qaSeededRef.current = false;
-        setActiveView("home");
+      setFamily(null);
+      setMembers([]);
+      setMessages([]);
+      setMessagesLoaded(false);
+      setOnboardingBusy(false);
+      setOnboardingError(null);
+      qaSeededRef.current = false;
+      setActiveView("home");
+
+      const cachedFamilyId = nextUser ? readStoredFamilyId(nextUser.uid) : null;
+      if (cachedFamilyId) {
+        familySourceRef.current = "storage";
+        setFamilyId(cachedFamilyId);
+        setResolvingFamily(false);
+        return;
       }
+
+      setFamilyId(null);
+      setResolvingFamily(nextUser !== null);
+      if (!nextUser) {
+        return;
+      }
+
+      void resolveInitialFamilyId(
+        nextUser.uid,
+        () => cachedFamilyId,
+        (uid, recoveredFamilyId) => {
+          if (requestId === recoveryReqIdRef.current) {
+            writeStoredFamilyId(uid, recoveredFamilyId);
+          }
+        },
+        apiDeps.store
+      ).then(({ familyId: recoveredFamilyId, source }) => {
+        if (requestId !== recoveryReqIdRef.current) {
+          return;
+        }
+        familySourceRef.current = source;
+        setFamilyId(recoveredFamilyId);
+        setResolvingFamily(false);
+      });
     });
-  }, [services]);
+    return () => {
+      recoveryReqIdRef.current++;
+      unsubscribe();
+    };
+  }, [services, apiDeps]);
 
   useEffect(() => {
     if (!services || !user || !familyId) {
@@ -174,8 +216,21 @@ export function App() {
     qaSeededRef.current = false;
     setOnboardingError(null);
 
-    const handleSubError = () => {
+    let active = true;
+    const requestId = recoveryReqIdRef.current;
+    const isCurrent = () => active && requestId === recoveryReqIdRef.current;
+
+    const handleSubError = (error?: Error) => {
+      if (!isCurrent()) {
+        return;
+      }
+      active = false;
       writeStoredFamilyId(user.uid, null);
+      const inaccessible = !error || ("code" in error && error.code === "permission-denied");
+      if (inaccessible && familySourceRef.current === "pointer" && apiDeps) {
+        void apiDeps.store.deleteUserFamilyPointer(user.uid).catch(() => {});
+      }
+      familySourceRef.current = "none";
       setFamilyId(null);
       setFamily(null);
       setMembers([]);
@@ -191,12 +246,24 @@ export function App() {
       services.db,
       familyId,
       (docData) => {
+        if (!isCurrent()) {
+          return;
+        }
         if (!docData) {
           handleSubError();
           return;
         }
         setFamily(docData);
         setSyncingFamily(false);
+        const backfillKey = `${user.uid}:${familyId}`;
+        if (
+          apiDeps &&
+          familySourceRef.current === "storage" &&
+          backfilledKeyRef.current !== backfillKey
+        ) {
+          backfilledKeyRef.current = backfillKey;
+          void backfillFamilyPointerIfMissing(user.uid, familyId, apiDeps.store).catch(() => {});
+        }
       },
       handleSubError
     );
@@ -204,7 +271,11 @@ export function App() {
     const unsubMembers = subscribeMembers(
       services.db,
       familyId,
-      (list) => setMembers(list),
+      (list) => {
+        if (isCurrent()) {
+          setMembers(list);
+        }
+      },
       () => {
         // Family listener owns access revocation recovery.
       }
@@ -214,8 +285,10 @@ export function App() {
       services.db,
       familyId,
       (list) => {
-        setMessages(list);
-        setMessagesLoaded(true);
+        if (isCurrent()) {
+          setMessages(list);
+          setMessagesLoaded(true);
+        }
       },
       () => {
         // Family listener owns access revocation recovery.
@@ -231,6 +304,7 @@ export function App() {
     }
 
     return () => {
+      active = false;
       unsubFamily();
       unsubMembers();
       unsubMessages();
@@ -321,6 +395,7 @@ export function App() {
       if (!apiDeps || !user) {
         return;
       }
+      const requestId = recoveryReqIdRef.current;
       setOnboardingBusy(true);
       setOnboardingError(null);
       try {
@@ -333,15 +408,24 @@ export function App() {
           nicknameInput,
           apiDeps
         );
+        if (requestId !== recoveryReqIdRef.current) {
+          return;
+        }
+        familySourceRef.current = "join";
+        backfilledKeyRef.current = `${user.uid}:${joinedFamilyId}`;
         writeStoredFamilyId(user.uid, joinedFamilyId);
         setFamilyId(joinedFamilyId);
         setActiveView("home");
       } catch (error) {
-        setOnboardingError(
-          error instanceof Error ? error.message : "Could not join family."
-        );
+        if (requestId === recoveryReqIdRef.current) {
+          setOnboardingError(
+            error instanceof Error ? error.message : "Could not join family."
+          );
+        }
       } finally {
-        setOnboardingBusy(false);
+        if (requestId === recoveryReqIdRef.current) {
+          setOnboardingBusy(false);
+        }
       }
     },
     [apiDeps, user]
@@ -382,7 +466,7 @@ export function App() {
 
   let screen: React.ReactNode;
 
-  if (!authReady || (user && familyId && (syncingFamily || !family))) {
+  if (!authReady || resolvingFamily || (user && familyId && (syncingFamily || !family))) {
     screen = <LoadingScreen />;
   } else if (!user || !familyId || !family) {
     screen = (

@@ -28,9 +28,14 @@ Both apps build against this exact contract so Android and Web work together imm
 
 ### Firestore Paths
 - `joinCodes/{joinCode}` -> `{ familyId }`
+- `users/{uid}` -> `{ familyId, updatedAt }` (one family pointer per Firebase Auth account)
 - `families/{familyId}` -> `{ name, joinCode, seniorName, seniorPhoneE164, allowListE164, gateway: { uid, deviceId, fcmToken, status, networkType, carrierName, signalDbm, batteryPercent, isCharging, lastHeartbeatAt } }`
 - `families/{familyId}/members/{uid}` -> `{ displayName, smsNickname, role, lastActiveAt, joinedAt, joinCode? }` (`joinCode` required when creating a `MEMBER` doc and must match `families/{familyId}.joinCode`; omitted on `GATEWAY` docs)
 - `families/{familyId}/messages/{messageId}` -> `{ direction, senderUid, senderName, text, smsFormattedText, encoding, segmentCount, status, retryCount, errorCode, errorReason, retryOfMessageId, createdAt, queuedOnGatewayAt, sentAt, deliveredAt, statusUpdatedAt, gatewayNetworkAtSend }`
+
+Only the account owner can `get`, `create`, `update`, or `delete` their pointer; `list` is denied. Pointer writes require exactly `['familyId', 'updatedAt']`: `updatedAt` is a timestamp, and `isFamilyParticipantAfter(familyId)` verifies that the owner is a member or Gateway host after the write.
+
+Web chat saves the pointer in the same batch as joining or rejoining. Existing members backfill only after their cached family is verified, without overwriting any existing pointer. Members who cleared their storage before a pointer was saved enter the join code once to establish it. Android Gateway recovery is a follow-up.
 
 ### Exact Enum Values (Case-Sensitive)
 - `direction`: `"OUTBOUND"` | `"INBOUND"`

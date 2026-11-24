@@ -59,6 +59,22 @@ service cloud.firestore {
       return isFamilyMember(familyId) || isFamilyGateway(familyId);
     }
 
+    function isFamilyMemberAfter(familyId) {
+      return isSignedIn()
+        && existsAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid));
+    }
+
+    function isFamilyParticipantAfter(familyId) {
+      return isFamilyMemberAfter(familyId) || isFamilyGatewayAfter(familyId);
+    }
+
+    function validUserPointer(data) {
+      return data.keys().hasOnly(['familyId', 'updatedAt'])
+        && isNonEmptyString(data.familyId)
+        && data.updatedAt is timestamp
+        && isFamilyParticipantAfter(data.familyId);
+    }
+
     function validGatewayMap(gw) {
       return gw is map
         && gw.keys().hasOnly([
@@ -308,6 +324,15 @@ service cloud.firestore {
           && validGatewayMessageUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
+    }
+
+    match /users/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == uid
+        && validUserPointer(request.resource.data);
+      allow delete: if isSignedIn() && request.auth.uid == uid;
     }
 
     match /{document=**} {
