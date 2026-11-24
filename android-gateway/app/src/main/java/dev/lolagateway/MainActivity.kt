@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(uid) { if (uid != null) SyncEngineWorker.enqueue(this@MainActivity) }
         val oauth = resources.getIdentifier("default_web_client_id", "string", packageName)
         LolaTheme(stored?.themeMode ?: "SYSTEM") {
-            Surface(Modifier.fillMaxSize().statusBarsPadding(), color = MaterialTheme.colorScheme.background) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 val prefs = stored
                 when {
                     prefs == null -> LoadingScreen()
@@ -173,7 +173,11 @@ class MainActivity : ComponentActivity() {
         val membersFlow = remember(profile.familyId) { requireNotNull(container.cloud).observeMembers(profile.familyId) }
         val members by membersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
         BackHandler(enabled = tab != GatewayTab.HOME) { tab = GatewayTab.HOME }
-        Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { IconBottomDock(tab) { tab = it } }) { padding ->
+        Scaffold(
+            modifier = Modifier.statusBarsPadding(),
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = { if (tab != GatewayTab.CHAT) IconBottomDock(tab) { tab = it } },
+        ) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (tab) {
                     GatewayTab.HOME -> HomeScreen(profile, members, prefs.paused, status, maySend, copyCode,
