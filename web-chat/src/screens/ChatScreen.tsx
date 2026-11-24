@@ -1,6 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { BackChevronIcon, SendArrowIcon } from "../components/Icons";
 import { StatusDot, type DotTone } from "../components/StatusDot";
+import {
+  computeComposerLayout,
+  shouldSubmitComposerOnKeyDown,
+} from "../lib/composerBehavior";
 import { formatTimeShort, getFirstName } from "../lib/formatters";
 import type { GatewayDisplayState } from "../lib/gatewayApi";
 import { calculateSmsMetrics } from "../lib/smsCounter";
@@ -63,6 +75,14 @@ function getHeaderStatusLabel(
   }
 }
 
+function hasCoarsePointer(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}
+
 export function ChatScreen({
   family,
   messages,
@@ -80,10 +100,28 @@ export function ChatScreen({
   const [sendError, setSendError] = useState<string | null>(null);
   const streamRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) {
+      return;
+    }
+
+    el.style.height = "auto";
+    // Measure wrapping at full width even if the previous draft needed a scrollbar.
+    el.style.overflowY = "hidden";
+    const scrollHeight = el.scrollHeight;
+    const { heightPx, overflowY } = computeComposerLayout(scrollHeight);
+    if (scrollHeight > 0) {
+      el.style.height = `${heightPx}px`;
+    }
+    el.style.overflowY = overflowY;
+  }, [draft]);
 
   const retriedMessageIds = useMemo(() => {
     const set = new Set<string>();
@@ -95,6 +133,7 @@ export function ChatScreen({
     return set;
   }, [messages]);
 
+  const isCoarsePointer = hasCoarsePointer();
   const trimmedDraft = draft.trim();
   const smsMetrics = trimmedDraft.length > 0
     ? calculateSmsMetrics(senderSmsNickname, trimmedDraft)
@@ -106,8 +145,7 @@ export function ChatScreen({
     seniorFirstName
   );
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submitDraft = async () => {
     if (!trimmedDraft || sending) {
       return;
     }
@@ -122,6 +160,29 @@ export function ChatScreen({
       );
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    void submitDraft();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const isComposing = event.nativeEvent.isComposing || event.keyCode === 229;
+    if (
+      shouldSubmitComposerOnKeyDown({
+        key: event.key,
+        shiftKey: event.shiftKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        isComposing,
+        isCoarsePointer: hasCoarsePointer(),
+      })
+    ) {
+      event.preventDefault();
+      void submitDraft();
     }
   };
 
@@ -300,15 +361,18 @@ export function ChatScreen({
         )}
 
         <form className="composer-bar" onSubmit={handleSubmit}>
-          <input
+          <textarea
+            ref={textareaRef}
             className="composer-input"
-            type="text"
+            rows={1}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Message family..."
             aria-label="Message family"
             autoComplete="off"
             disabled={sending}
+            enterKeyHint={isCoarsePointer ? "enter" : "send"}
           />
           <button
             type="submit"
