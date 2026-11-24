@@ -22,11 +22,11 @@
 | **BUG-009** | `android-gateway` | High | Battery optimization button lacked try-catch; threw uncaught `ActivityNotFoundException` on customized OEM skins | **RESOLVED** |
 | **BUG-010** | `android-gateway` | Medium | System back button in `ChatScreen` exited/backgrounded app instead of navigating to `HOME` tab | **RESOLVED** |
 | **BUG-011** | `android-gateway` | High | `PhoneNormalizer` rejected common Philippine mobile format with redundant leading zero (`+6309...`) | **RESOLVED** |
-| **BUG-012** | `web-chat` | Medium | Single-line `<input>` in chat composer restricts multiline composition for multi-part SMS | Logged (Design Limitation) |
-| **BUG-013** | `web-chat` | High | Cleared `localStorage` locks out existing family members due to lack of `families` collection list permissions | Logged (Auth Architecture) |
-| **BUG-014** | `worker` | High | Potential 404 race condition between Web Client Firestore write and Worker REST API lookup | Logged (Cloud Timing) |
-| **BUG-015** | `android-gateway` | Medium | Dual observation of Room and Firestore remote Flow in `MainActivity` causes redundant UI thread re-merges | Logged (Performance Polish) |
-| **BUG-016** | `android-gateway` | Medium | Unthrottled heartbeat publishing on every sync cycle creates redundant Firestore document writes | Logged (Spark Quota Guard) |
+| **BUG-012** | `web-chat` | Medium | Single-line `<input>` in chat composer restricts multiline composition for multi-part SMS | **RESOLVED** |
+| **BUG-013** | `web-chat` | High | Cleared `localStorage` locks out existing family members due to lack of `families` collection list permissions | **RESOLVED** |
+| **BUG-014** | `worker` | High | Potential 404 race condition between Web Client Firestore write and Worker REST API lookup | **RESOLVED** |
+| **BUG-015** | `android-gateway` | Medium | Dual observation of Room and Firestore remote Flow in `MainActivity` causes redundant UI thread re-merges | **RESOLVED** |
+| **BUG-016** | `android-gateway` | Medium | Unthrottled heartbeat publishing on every sync cycle creates redundant Firestore document writes | **RESOLVED** |
 
 ---
 
@@ -81,6 +81,29 @@
 - **Component:** `android-gateway/.../data/model/PhoneNormalizer.kt`
 - **Root Cause:** Regex `(?:\\+?63|0)?(9[0-9]{9})` failed to normalize user inputs where both `+63` and leading `0` were entered (`+6309171234567`).
 - **Resolution:** Adjusted regex to `(?:\\+?63\\s*0?|0)?(9[0-9]{9})` and added verification test cases in `CoreDomainTest.kt`.
+
+### BUG-012: Multiline Chat Composer
+- **Component:** `web-chat/src/screens/ChatScreen.tsx`
+- **Resolution:** Upgraded composer to an auto-growing multiline `<textarea>` (PR #6, `fix/bug-012-multiline-composer`).
+
+### BUG-013: Family Session Recovery After Cleared Storage
+- **Component:** `web-chat/`, `firebase/firestore.rules`
+- **Resolution:** Added `users/{uid}` family pointer recovery so returning members restore their family chat automatically even after clearing `localStorage` (PR #8, `fix/bug-013-family-recovery`).
+
+### BUG-014: Worker 404 Race on Freshly Written Messages
+- **Component:** `worker/src/index.ts`, `worker/tests/notify.test.ts`
+- **Root Cause:** Calling `POST /notify` immediately after Firestore `setDoc` can briefly encounter a `404` on the REST API lookup.
+- **Resolution:** Added bounded 404-only retry (`250ms`, `500ms`) in `readMessageWithRetry` before returning `400 INVALID_MESSAGE`, verified with unit tests.
+
+### BUG-015: Redundant UI-Thread Message Re-Merges
+- **Component:** `android-gateway/.../MainActivity.kt`
+- **Root Cause:** Collecting Room and Firestore flows separately in Compose caused redundant merges on the main thread.
+- **Resolution:** Combined Room and Firestore flows via `combine(...).distinctUntilChanged().flowOn(Dispatchers.Default)` into a single collected state.
+
+### BUG-016: Unthrottled Heartbeat Firestore Writes
+- **Component:** `android-gateway/.../sync/SyncEngine.kt`, `SyncEngineTest.kt`
+- **Root Cause:** Every sync cycle unconditionally called `publishHeartbeat`, wasting Firestore Spark daily writes and battery during message bursts.
+- **Resolution:** Throttled routine heartbeats to a 15-minute window while still publishing immediately on first sync, family change, pause toggle, or Wi-Fi/4G transport change; verified in `SyncEngineTest`.
 
 ### BUG-017: Bottom navigation tabs and screen views lacked spatial slide animations
 - **Severity:** Medium (UX Flow / Delight)

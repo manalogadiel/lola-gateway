@@ -12,20 +12,33 @@ const env = {
 const payload = { familyId: 'family1', messageId: 'message1' };
 const field = (stringValue: string) => ({ stringValue });
 
-function fixture({ membership = 200, status = 'ONLINE', sender = 'member', token = 'gateway-token' } = {}) {
+function fixture({
+  membership = 200,
+  status = 'ONLINE',
+  sender = 'member',
+  token = 'gateway-token',
+  message404Count = 0,
+} = {}) {
   const pushes: unknown[] = [];
+  const sleeps: number[] = [];
+  let messageAttempts = 0;
   const worker = createWorker({
     async verifyFirebaseIdToken(token) {
       if (token !== 'valid') throw new Error('Invalid token');
       return 'member';
     },
+    async sleep(ms) { sleeps.push(ms); },
     async fetch(input, init) {
       assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer valid');
       const path = String(input);
       if (path.endsWith('/members/member')) return new Response(null, { status: membership });
-      if (path.endsWith('/messages/message1')) return Response.json({ fields: {
-        direction: field('OUTBOUND'), status: field('QUEUED'), senderUid: field(sender),
-      } });
+      if (path.endsWith('/messages/message1')) {
+        messageAttempts++;
+        if (messageAttempts <= message404Count) return new Response(null, { status: 404 });
+        return Response.json({ fields: {
+          direction: field('OUTBOUND'), status: field('QUEUED'), senderUid: field(sender),
+        } });
+      }
       assert.ok(path.endsWith('/families/family1'));
       return Response.json({ fields: { gateway: { mapValue: { fields: {
         status: field(status), fcmToken: field(token),
@@ -33,7 +46,7 @@ function fixture({ membership = 200, status = 'ONLINE', sender = 'member', token
     },
     async sendHighPriorityFcm(_env, token, data) { pushes.push({ token, data }); },
   });
-  return { worker, pushes };
+  return { worker, pushes, sleeps };
 }
 
 function notify(worker: ReturnType<typeof createWorker>, authorization = 'Bearer valid') {
@@ -76,4 +89,18 @@ test('allows CORS preflight only for configured origins', async () => {
   assert.equal(accepted.status, 204);
   assert.equal(accepted.headers.get('Access-Control-Allow-Origin'), origin);
   assert.equal((await preflight('https://other.example')).status, 403);
+});
+
+test('retries briefly on initial 404 message lookup before succeeding or returning 400 (BUG-014)', async () => {
+  const transient = fixture({ message404Count: 2 });
+  assert.deepEqual(await (await notify(transient.worker)).json(), { ok: true });
+  assert.deepEqual(transient.sleeps, [250, 500]);
+  assert.deepEqual(transient.pushes, [{ token: 'gateway-token', data: payload }]);
+
+  const missing = fixture({ message404Count: 5 });
+  const response = await notify(missing.worker);
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: 'INVALID_MESSAGE' });
+  assert.deepEqual(missing.sleeps, [250, 500]);
+  assert.deepEqual(missing.pushes, []);
 });

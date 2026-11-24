@@ -10,10 +10,17 @@ interface FirestoreValue {
   mapValue?: { fields?: Record<string, FirestoreValue> };
 }
 
-const dependencies = { verifyFirebaseIdToken, sendHighPriorityFcm, fetch: globalThis.fetch.bind(globalThis) };
+const dependencies = {
+  verifyFirebaseIdToken,
+  sendHighPriorityFcm,
+  fetch: globalThis.fetch.bind(globalThis),
+  sleep: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)),
+};
 const documentId = /^[A-Za-z0-9_-]{1,128}$/;
+const messageLookupRetryDelaysMs = [250, 500];
 
-export function createWorker(services = dependencies) {
+export function createWorker(overrides: Partial<typeof dependencies> = {}) {
+  const services = { ...dependencies, ...overrides };
   return {
     async fetch(request: Request, env: Env): Promise<Response> {
       const headers = new Headers({ Vary: 'Origin', 'Cache-Control': 'no-store' });
@@ -59,7 +66,16 @@ export function createWorker(services = dependencies) {
         const member = await read(`/members/${encodeURIComponent(uid)}`);
         if (member.status === 403 || member.status === 404) return respond(403, { error: 'NOT_A_MEMBER' });
         if (!member.ok) throw new Error('Membership lookup failed');
-        const [family, message] = await Promise.all([read(''), read(`/messages/${messageId}`)]);
+        const readMessageWithRetry = async () => {
+          let response = await read(`/messages/${messageId}`);
+          for (const delay of messageLookupRetryDelaysMs) {
+            if (response.status !== 404) break;
+            await services.sleep(delay);
+            response = await read(`/messages/${messageId}`);
+          }
+          return response;
+        };
+        const [family, message] = await Promise.all([read(''), readMessageWithRetry()]);
         if (family.status === 403 || message.status === 403) return respond(403, { error: 'FORBIDDEN' });
         if (message.status === 404) return respond(400, { error: 'INVALID_MESSAGE' });
         if (!family.ok || !message.ok) throw new Error('Firestore lookup failed');

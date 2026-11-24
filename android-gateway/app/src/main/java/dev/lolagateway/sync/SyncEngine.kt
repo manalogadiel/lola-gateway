@@ -23,9 +23,13 @@ class SyncEngine(
     private val network: () -> String,
     private val heartbeat: suspend (GatewayProfile, Boolean) -> Map<String, Any?>,
     private val canSend: () -> Boolean,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val heartbeatIntervalMs: Long = 15 * 60 * 1000L,
 ) {
     private val lock = Mutex()
     private val claimer = LocalDispatchClaimer(database)
+    private var lastHeartbeatAtMs: Long? = null
+    private var lastHeartbeatKey: Triple<String, Boolean, String>? = null
 
     suspend fun runCatchUpAndDrain(): Boolean = lock.withLock {
         val startedAt = System.currentTimeMillis()
@@ -77,10 +81,21 @@ class SyncEngine(
                 val synced = publish(remote, message)
                 cloudOk = cloudOk && synced
             }
-            val heartbeatPublished = cloudCall {
-                remote.publishHeartbeat(profile.familyId, heartbeat(profile, state.paused))
+            val now = clock()
+            val heartbeatKey = Triple(profile.familyId, state.paused, network())
+            val heartbeatDue = lastHeartbeatAtMs == null ||
+                lastHeartbeatKey != heartbeatKey ||
+                (now - (lastHeartbeatAtMs ?: 0L)) >= heartbeatIntervalMs
+            if (heartbeatDue) {
+                val heartbeatPublished = cloudCall {
+                    remote.publishHeartbeat(profile.familyId, heartbeat(profile, state.paused))
+                }
+                if (heartbeatPublished) {
+                    lastHeartbeatAtMs = now
+                    lastHeartbeatKey = heartbeatKey
+                }
+                cloudOk = cloudOk && heartbeatPublished
             }
-            cloudOk = cloudOk && heartbeatPublished
             if (cloudOk && !state.paused) database.handoffs().markRecovered(startedAt, System.currentTimeMillis())
         }
         cloudOk

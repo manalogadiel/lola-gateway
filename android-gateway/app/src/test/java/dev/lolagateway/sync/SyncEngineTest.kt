@@ -61,4 +61,45 @@ class SyncEngineTest {
         assertFalse(requireNotNull(database.messages().find("in_reply")).syncDirty)
         assertNotNull(database.handoffs().all().single().recoveredAtMs)
     }
+
+    @Test fun throttlesRedundantHeartbeatsUnlessStateNetworkOrIntervalChanges() = runBlocking {
+        val number = "+639171234567"
+        prefs.saveProfile(GatewayProfile("family", "Family", "CODE", "Lola", number, setOf(number), "host", "Gadiel"))
+        var now = 1_000L
+        var activeNet = "WIFI"
+        var heartbeats = 0
+        val cloud = object : GatewayCloudClient {
+            override suspend fun fetchQueuedOutbound(familyId: String) = emptyList<LocalMessageEntity>()
+            override suspend fun publishMessage(message: LocalMessageEntity) = Unit
+            override suspend fun publishHeartbeat(familyId: String, heartbeat: Map<String, Any?>) { heartbeats++ }
+        }
+        val sender = SmsSender(database) { _, _, _, _, _ -> }
+        val engine = SyncEngine(
+            database, prefs, { cloud }, sender, { "host" }, { activeNet },
+            { _, _ -> emptyMap() }, { true }, clock = { now }, heartbeatIntervalMs = 15 * 60 * 1000L,
+        )
+
+        assertTrue(engine.runCatchUpAndDrain())
+        assertEquals(1, heartbeats)
+
+        // Immediate repeat sync with unchanged state and network skips redundant write (BUG-016).
+        now += 30_000L
+        assertTrue(engine.runCatchUpAndDrain())
+        assertEquals(1, heartbeats)
+
+        // Network handoff publishes immediately.
+        activeNet = "CELLULAR"
+        assertTrue(engine.runCatchUpAndDrain())
+        assertEquals(2, heartbeats)
+
+        // Pause state change publishes immediately.
+        prefs.setPaused(true)
+        assertTrue(engine.runCatchUpAndDrain())
+        assertEquals(3, heartbeats)
+
+        // Passing the 15-minute throttle window publishes again.
+        now += 15 * 60 * 1000L
+        assertTrue(engine.runCatchUpAndDrain())
+        assertEquals(4, heartbeats)
+    }
 }

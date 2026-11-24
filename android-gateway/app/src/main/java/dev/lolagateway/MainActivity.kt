@@ -50,6 +50,9 @@ import dev.lolagateway.ui.settings.SimChoice
 import dev.lolagateway.ui.theme.LolaTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -176,14 +179,17 @@ class MainActivity : ComponentActivity() {
                     GatewayTab.HOME -> HomeScreen(profile, members, prefs.paused, status, maySend, copyCode,
                         { tab = GatewayTab.CHAT }, { tab = GatewayTab.PEOPLE }, grant, { toggle(!prefs.paused) })
                     GatewayTab.CHAT -> {
-                        val localFlow = remember(profile.familyId) { container.database.messages().observe(profile.familyId) }
-                        val remoteFlow = remember(profile.familyId) { requireNotNull(container.cloud).observeMessages(profile.familyId) }
-                        val local by localFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-                        val remote by remoteFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-                        val messages = remember(local, remote) {
-                            (local + remote).groupBy { it.messageId }.values.map { copies -> copies.maxBy { it.statusUpdatedAtMs } }
-                                .sortedBy { it.createdAtMs }
+                        val messagesFlow = remember(profile.familyId) {
+                            combine(
+                                container.database.messages().observe(profile.familyId),
+                                requireNotNull(container.cloud).observeMessages(profile.familyId),
+                            ) { local, remote ->
+                                (local + remote).groupBy { it.messageId }.values
+                                    .map { copies -> copies.maxBy { it.statusUpdatedAtMs } }
+                                    .sortedBy { it.createdAtMs }
+                            }.distinctUntilChanged().flowOn(Dispatchers.Default)
                         }
+                        val messages by messagesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
                         ChatScreen(profile, messages, busy, error, { tab = GatewayTab.HOME },
                             { message -> enqueue(message.text, false, message.messageId) }) { enqueue(it, false, null) }
                     }
