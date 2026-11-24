@@ -1,6 +1,6 @@
 # Lola Gateway: Team Testing & Next Steps Guide
 
-This guide explains how **Georgie (Bueno)** and **Basty (Ponce)** can each set up Lola Gateway on their own Android phone, test end-to-end with their own keypad/secondary phone, and complete the remaining items before the **Nov 30 to Dec 4, 2026** defense.
+This guide explains how **Basty (Bueno)** and **Georgie (Ponce)** can each set up Lola Gateway on their own Android phone, test end-to-end with their own keypad/secondary phone, and complete the remaining items before the **Nov 30 to Dec 4, 2026** defense.
 
 ## Shared Links
 
@@ -12,7 +12,7 @@ This guide explains how **Georgie (Bueno)** and **Basty (Ponce)** can each set u
 
 ---
 
-## Step 1: Independent Setup (Both Georgie and Basty)
+## Step 1: Independent Setup (Both Basty and Georgie)
 
 Each teammate can run an independent family bridge using their own phone:
 
@@ -30,7 +30,7 @@ Each teammate can run an independent family bridge using their own phone:
 
 ---
 
-## Step 2: Tasks for Georgie (Web Chat PWA & UI)
+## Step 2: Tasks for Basty (Web Chat PWA & Firebase Hosting)
 
 ### What to test
 - Test https://lola-gateway.web.app on both mobile browser (also install via **Add to Home Screen** as a PWA) and desktop browser while connected to your own Gateway phone.
@@ -52,7 +52,7 @@ Each teammate can run an independent family bridge using their own phone:
 
 ---
 
-## Step 3: Tasks for Basty (QA, Live Trials & Evidence)
+## Step 3: Tasks for Georgie (QA, Live Trials & Evidence)
 
 ### What to test
 Run the 5 live scenarios from `docs/qa/test-plan.md` using your own Android phone as the Gateway and a separate keypad/secondary phone as Lola:
