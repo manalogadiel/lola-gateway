@@ -165,6 +165,8 @@ export function App() {
       setOnboardingBusy(false);
       setOnboardingError(null);
       qaSeededRef.current = false;
+      prevViewRef.current = "home";
+      setSlideDirection("forward");
       setActiveView("home");
 
       const cachedFamilyId = nextUser ? readStoredFamilyId(nextUser.uid) : null;
@@ -415,6 +417,8 @@ export function App() {
         backfilledKeyRef.current = `${user.uid}:${joinedFamilyId}`;
         writeStoredFamilyId(user.uid, joinedFamilyId);
         setFamilyId(joinedFamilyId);
+        prevViewRef.current = "home";
+        setSlideDirection("forward");
         setActiveView("home");
       } catch (error) {
         if (requestId === recoveryReqIdRef.current) {

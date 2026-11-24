@@ -27,6 +27,12 @@
 | **BUG-014** | `worker` | High | Potential 404 race condition between Web Client Firestore write and Worker REST API lookup | **RESOLVED** |
 | **BUG-015** | `android-gateway` | Medium | Dual observation of Room and Firestore remote Flow in `MainActivity` causes redundant UI thread re-merges | **RESOLVED** |
 | **BUG-016** | `android-gateway` | Medium | Unthrottled heartbeat publishing on every sync cycle creates redundant Firestore document writes | **RESOLVED** |
+| **BUG-017** | `web-chat` | Medium | Bottom navigation tabs and screen views lacked spatial slide animations | **RESOLVED** |
+| **BUG-018** | `web-chat` | Low | Buttons lacked tactile depth, elevation drop, and spring physics | **RESOLVED** |
+| **BUG-019** | `web-chat` | Low | Generic OS system font stack without brand identity | **RESOLVED** |
+| **BUG-020** | `web-chat` | Medium | Sterile interface lacking Lola Gateway branding & mascot presence | **RESOLVED** |
+| **BUG-021** | `web-chat` | Medium | Duplicate chat rows and redundant helper labels in Home and People screens | **RESOLVED** |
+| **BUG-022** | `web-chat` | Low | Navigation ref retaining stale previous view index across auth sign-out and rejoin | **RESOLVED** |
 
 ---
 
@@ -134,3 +140,9 @@
 - **Component:** `web-chat/src/screens/HomeScreen.tsx`, `web-chat/src/screens/PeopleScreen.tsx`, `web-chat/src/screens/ChatScreen.tsx`
 - **Symptom:** HomeScreen rendered two separate chat rows ("Manalo Family" and "Lola Elena") that both opened the exact same chat thread. PeopleScreen repeated `" · SMS: \"Ate\""` on every member row.
 - **Resolution:** Consolidated to 1 flagship Family Chat Card with dedicated `Lola's SMS` badge. Replaced repetitive member strings with sleek compact SMS nickname tags. Cleaned up inbound bubble sender tags.
+
+### BUG-022: Navigation State Desynchronization Across Auth & Rejoin
+- **Severity:** Low (UX Motion Consistency)
+- **Component:** `web-chat/src/App.tsx`
+- **Symptom:** When a user was on Settings (tab index 2), signed out, and signed back in or joined a family, `prevViewRef.current` remained at `"settings"`. Navigating to People (tab index 1) caused the view to slide backward instead of forward from Home.
+- **Resolution:** Explicitly reset `prevViewRef.current = "home"` and `slideDirection = "forward"` inside `observeAuth` and `handleJoinFamily`.
