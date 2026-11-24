@@ -28,6 +28,26 @@ describe("calculateSmsMetrics", () => {
     expect(twoParts.limit).toBe(306);
   });
 
+  it("counts each newline as one GSM-7 septet across the single-part boundary", () => {
+    const twoLines = `${"a".repeat(75)}\n${"b".repeat(76)}`;
+    expect(calculateSmsMetrics("Gadiel", twoLines)).toEqual({
+      formattedText: `Gadiel: ${twoLines}`,
+      encoding: "GSM-7",
+      segmentCount: 1,
+      used: 160,
+      limit: 160,
+    });
+
+    const threeLines = twoLines.replace("\n", "\n\n");
+    expect(calculateSmsMetrics("Gadiel", threeLines)).toEqual({
+      formattedText: `Gadiel: ${threeLines}`,
+      encoding: "GSM-7",
+      segmentCount: 2,
+      used: 161,
+      limit: 306,
+    });
+  });
+
   it("matches Android multipart boundaries when 2-septet GSM-7 extended chars cross septet 153", () => {
     // "Seb: €" -> 5 basic septets + 2 septets for '€' = 7 septets
     const single = calculateSmsMetrics("Seb", "€");
