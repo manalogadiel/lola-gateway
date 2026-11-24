@@ -38,6 +38,9 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE familyId = :familyId ORDER BY createdAtMs, messageId")
     suspend fun all(familyId: String): List<LocalMessageEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM messages WHERE familyId = :familyId AND direction = 'OUTBOUND' AND smsFormattedText = :formattedText AND COALESCE(sentAtMs, dispatchStartedAtMs, createdAtMs) >= :sinceMs)")
+    suspend fun hasRecentOutboundEcho(familyId: String, formattedText: String, sinceMs: Long): Boolean
 }
 
 @Dao

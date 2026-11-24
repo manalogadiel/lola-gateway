@@ -22,8 +22,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -47,6 +49,7 @@ import dev.lolagateway.ui.onboarding.OnboardingScreen
 import dev.lolagateway.ui.people.PeopleScreen
 import dev.lolagateway.ui.settings.SettingsScreen
 import dev.lolagateway.ui.settings.SimChoice
+import dev.lolagateway.ui.theme.LocalLolaColors
 import dev.lolagateway.ui.theme.LolaTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -82,6 +85,15 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(uid) { if (uid != null) SyncEngineWorker.enqueue(this@MainActivity) }
         val oauth = resources.getIdentifier("default_web_client_id", "string", packageName)
         LolaTheme(stored?.themeMode ?: "SYSTEM") {
+            val lola = LocalLolaColors.current
+            val view = LocalView.current
+            val onOnboarding = stored != null && profile == null
+            SideEffect {
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !lola.dark && !onOnboarding
+                    isAppearanceLightNavigationBars = !lola.dark
+                }
+            }
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 val prefs = stored
                 when {

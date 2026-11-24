@@ -19,13 +19,16 @@ class SmsInboundHandler(private val database: AppDatabase, private val prefs: Ga
             }
             val (timestamp, body) = message
             if (body.isBlank()) continue
+            val now = System.currentTimeMillis()
+            if (database.messages().hasRecentOutboundEcho(profile.familyId, body, now - 30_000L)) continue
             val details = SmsSegmentCalculator.segment(body)
             val messageId = InboundIdGenerator.generate(from, timestamp, body)
+            val createdAt = if (kotlin.math.abs(timestamp - now) > 5 * 60 * 1000L) now else timestamp
             val row = LocalMessageEntity(
                 messageId, profile.familyId, "INBOUND", "senior", profile.seniorName, body,
                 body, details.encoding.wireName, details.segmentCount, status = "DELIVERED",
                 localDispatchState = "FINISHED", syncDirty = true, createInCloud = true,
-                createdAtMs = timestamp, deliveredAtMs = System.currentTimeMillis(),
+                createdAtMs = createdAt, deliveredAtMs = now,
             )
             saved = database.messages().insert(row) != -1L || saved
         }
